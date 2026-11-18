@@ -35,6 +35,22 @@ public final class VisitStore {
             let kept = visits.sorted { $0.value > $1.value }.prefix(Self.limit)
             visits = Dictionary(uniqueKeysWithValues: kept.map { ($0.key, $0.value) })
         }
+        save()
+    }
+
+    /// Visits to sessions that came back in new terminals, as after their machine's Herdr
+    /// restarted, count for the new terminals.
+    public func rebind(_ moves: [Agent.ID: Agent.ID]) {
+        var changed = false
+        for (old, new) in moves {
+            guard let date = visits.removeValue(forKey: .session(old)) else { continue }
+            visits[.session(new)] = max(date, visits[.session(new)] ?? .distantPast)
+            changed = true
+        }
+        if changed { save() }
+    }
+
+    private func save() {
         let records = visits.map { Record(place: $0.key, date: $0.value) }
         if let data = try? JSONEncoder().encode(records) { defaults.set(data, forKey: Self.storageKey) }
     }

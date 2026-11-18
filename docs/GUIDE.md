@@ -21,12 +21,13 @@ A bilingual (English/Spanish) quick guide with the same content comes with the a
 - **Local files:** click a path an agent prints. Markdown opens rendered in the session's browser, HTML opens as a page, and any other file in its default app.
 - **Sessions named in the terminal:** click another session's name or pane ID, as `shepherdr` prints them when an agent starts one, to open that session.
 - **Click to choose:** click an option of an agent's numbered menu, such as a permission prompt, to select it; double-click to confirm.
-- **Picks up where you left off:** after a restart, the session you had open comes back, and every session keeps its browser tabs, prompt editor and resources.
+- **Picks up where you left off:** after Shepherdr restarts, the session you had open comes back, and every session keeps its browser tabs, prompt editor and resources. When a machine's Herdr restarts and brings its sessions back in new terminals, they keep those too, along with their holds and their place in the queue.
+- **Ready for restarts:** **Settings → Agents** shows what a restart of each machine's Herdr would cost, such as sessions whose conversations Herdr couldn't resume, and sets up what helps: Herdr's integrations for the agents, and Herdr starting with the machine.
 - **Notifications:** a macOS notification tells you when an agent finishes or needs you, with what it last said, and when a pull request's checks finish. Click it to open the session.
 - **Sessions on hold:** mark a session as waiting for others, such as a planner waiting for the subagents it launched. It shows an hourglass until they finish, and the sessions it waits for are listed under it, in a tree you can collapse.
 - **Compass:** the window's first mode, before Agents (**⌥⌘1** and **⌥⌘2**), with a page of your day kept by an agent of its own on this Mac. It starts by summing up your sessions; ask it in its terminal to cover more, such as your calendar or mail. It updates on the schedule you choose, keeps every day's page and a copy per run in `~/.shepherdr/compass`, commits them to Git and can push them to a private repository. Buttons on the page start the sessions it suggests, once you check them in New Session.
 - **Agents that coordinate:** Shepherdr installs a small `shepherdr` command and a skill for Claude Code and Codex on each machine, Linux included. An agent asked to "start a session on buildbox" starts it there, nested under its own session, which goes on hold until the new one finishes: starting sessions always fans out. When you ask the new session to hand its result back, it does with `shepherdr handoff`, and Shepherdr delivers it as a prompt once the coordinator is free. Machines never connect to your Mac: Shepherdr collects what agents leave for it.
-- **Create and close sessions:** **⌘N** creates a Herdr workspace with a shell in a folder; start Claude Code, Codex or any other supported agent in it and it joins the queue. Create one in a group with its **+**, or next to a session with **New Session in Same Folder…** (**⇧⌘N**). **Close Session…** in a session's context menu ends its pane after confirmation. **Rename…** renames its Herdr workspace.
+- **Create and close sessions:** **⌘N** creates a Herdr workspace in a folder with Claude Code, Codex or any other supported agent and its first prompt, or with a shell to start one in later. Create one in a group with its **+**, or next to a session with **New Session in Same Folder…** (**⇧⌘N**). **Close Session…** in a session's context menu ends its pane after confirmation. **Rename…** renames its Herdr workspace.
 - **Overview:** how many sessions need you, are working, done or idle, and a card per machine with its sessions and its processor, memory and disk use. Click states and machines to list the sessions in any combination of them. Plain shell panes are listed separately.
 - **GitHub inbox:** the overview's **GITHUB** tab lists what the repositories you follow ask of you: pull requests awaiting your review, issues assigned to you and your own open pull requests, with their checks and the pull requests linked to each issue. **SUGGEST ORDER** lists the pull requests in the order to take them on.
 - **Lid status:** the foot of the sidebar tells you whether it's safe to close the lid. While agents work on this Mac it warns you not to, since sleep would pause them; remote sessions don't count, they keep going.
@@ -63,6 +64,17 @@ Install and start Herdr separately, then open Shepherdr. The app reads your exis
 - Recommended: the [GitHub CLI](https://cli.github.com) on this Mac, signed in with `gh auth login`. With it, Shepherdr confirms GitHub pull requests and issues, private ones included, fetches their titles, watches pull requests' CI checks and fills the GitHub inbox. Without it, resources are checked through the session browsers, which see private repositories only while you're signed in there, checks aren't watched and the inbox stays empty.
 
 Local integration has been verified with CLI 0.9.3 querying an existing, compatible 0.9.0 server. Updating the CLI does not require replacing a compatible running server.
+
+### Updating Herdr
+
+Shepherdr asks every machine to run Herdr 0.9.5 or later. While a machine that answers runs an older server, the foot of the sidebar says which, with **HOW**, **NOTES** for Herdr's release notes, and **LATER**, which asks again the next day. 0.9.4 keeps agents' sessions when a Mac restarts and writes Herdr's saves whole, so a crash can't leave an unreadable one; 0.9.5 shows Claude Code's questions as blocked in named sessions and stops Codex's warning at every start.
+
+On each machine:
+
+1. Install it with `herdr update`, or `brew upgrade herdr` where Homebrew installed it. The running server keeps the old version.
+2. When no agent is in the middle of something, restart the server: `herdr server stop`, or `herdr session stop NAME` for a named session, then open Herdr again or start the service that runs it.
+
+Agents whose conversation Herdr recorded come back where they were, and Shepherdr keeps their holds and their place in the queue ([When Herdr restarts](#when-herdr-restarts)). Shepherdr doesn't do this for you: restarting the server restarts every agent on it.
 
 ## Connect Herdr
 
@@ -153,7 +165,7 @@ Groups gather sessions however you like: a project, a client, personal work. Cre
 - A group is one position in the queue: drag its header, use its ▲▼ controls or its context menu to prioritize it like a session. Inside, its sessions keep their own order with the same controls.
 - Drop a session on a group's header to add it, or between grouped sessions to place it exactly. **Move to Group** and **Remove from Group** in a session's context menu do the same without dragging. Groups do not nest.
 - Click a header to collapse or expand the group. A collapsed group still shows how many of its sessions need you, and its sessions are skipped by **⌘1…⌘9**.
-- Hover a header and click **+** (or use **New Session in Group…** in its context menu) to create a session in the group. Until you start an agent in it, it is listed in the group as a shell.
+- Hover a header and click **+** (or use **New Session in Group…** in its context menu) to create a session in the group. One created with a shell is listed in the group as a shell until you start an agent in it.
 - **Rename…** and **Ungroup** are in the header's context menu. Ungrouping leaves the sessions where the group was, in their order; it never closes them.
 
 Numbers run through the whole queue, groups included, so they always reflect overall priority.
@@ -174,7 +186,7 @@ Turn on **View → Gather Sessions by Project**, or click **[ ] projects** in th
 
 ## Create and close sessions
 
-**⌘N** (or **+** in the sidebar) opens **New Session**: choose a folder (on the selected machine), or paste a GitHub repository or pull request, and an optional name. Shepherdr runs `herdr workspace create --cwd … --label …` and opens its shell. Start an agent there as you would in any terminal: Herdr detects it, and the session joins the queue within one refresh.
+**⌘N** (or **+** in the sidebar) opens **New Session**: choose a folder (on the selected machine), or paste a GitHub repository or pull request, an optional name, and what runs there: a shell, or an agent such as Claude Code or Codex with an optional first prompt. Shepherdr runs `herdr workspace create --cwd … --label …`, then `herdr agent start … --kind …` for an agent, and opens the session; the first prompt goes in once the agent is ready. New Session chooses the agent you chose last time, or a shell. In a shell, start an agent as you would in any terminal: Herdr detects it, and the session joins the queue within one refresh.
 
 Below the folder, the folders agents on the selected machine work in are one click away, the most used first, followed by those of shells still waiting for an agent. Git worktrees are left out: they belong to the session that made them.
 
@@ -220,7 +232,7 @@ Click a pane to work in it. It's outlined, and the prompt editor, the padlock, t
 
 ### Browser
 
-Each session has its own browser column, to the right of the terminal. Clicking a link opens it there in a new tab, or switches to the tab already showing it; **◫ BROWSER** in the bottom bar or **⌘B** shows or hides the column, and **+** opens an empty tab. The tabs stay loaded, scrolled and signed in while you switch sessions, so a pull request you are reviewing is still where you left it. Pages stay loaded out of sight, up to 24 besides the ones on screen; past that, the pages of the sessions you go back to least let go of their memory and of whatever they keep running, and more of them do when macOS runs short of memory (6 under memory pressure, none when it's critical). The tab keeps its address and title and loads the page again when you show it, without its scroll position, back and forward history, or anything typed in a form. Compass's page, a page still loading, and pages another page opened as a window stay loaded. Pages that open new windows open new tabs. **⧉** opens the current page in your default browser.
+Each session has its own browser column, to the right of the terminal. Clicking a link opens it there in a new tab, or switches to the tab already showing it; **◫ BROWSER** in the bottom bar or **⌘B** shows or hides the column, and **+** opens an empty tab. The tabs stay loaded, scrolled and signed in while you switch sessions, so a pull request you are reviewing is still where you left it. Pages stay loaded out of sight, up to 24 besides the ones on screen; past that, the pages of the sessions you go back to least let go of their memory and of whatever they keep running, and more of them do when macOS runs short of memory (6 under memory pressure, none when it's critical). The tab keeps its address and title and loads the page again when you show it, without its scroll position, back and forward history, or anything typed in a form. Compass's page, a page still loading, and pages another page opened as a window stay loaded. Pages that open new windows open new tabs. The address field takes a web address, with or without `https://`, a path on this Mac such as `~/notes/plan.md`, or a `file://` link. **⧉** opens the current page in your default browser.
 
 **⌘-click** a link in a page to open it in your default browser instead.
 
@@ -230,7 +242,7 @@ Slack links, wherever you open them (the terminal, a page, a resource, the addre
 
 Sign-ins are shared by every session's browser and persist across launches, in WebKit's own storage for Shepherdr. Safari's sessions and cookies cannot be shared with other apps, so sign in once here, or **⌘-click** links to use Safari. Shepherdr remembers each session's tabs, the selected one and whether the browser was open: after a restart they come back, and each page loads the first time you look at it. Closing a tab forgets it, and closing the session forgets them all.
 
-Local Markdown is rendered with GitHub-flavored Markdown (tables, task lists), with its images, and without running any script it contains; **↻** renders the file again. Links between local files open the same way. HTML files open as pages that can read their own folder.
+Local Markdown is rendered with GitHub-flavored Markdown (tables, task lists), with its images, and without running any script it contains; **↻** renders the file again. Links between local files open the same way. HTML files open as pages that can read their own folder. Other files you type in the address field, or that an agent opens, show in the browser too when WebKit can: pictures, PDFs and text.
 
 ### Resources
 
@@ -264,9 +276,9 @@ The sessions it waits for move under it in the queue, joined by tree lines, and 
 
 In the tree, the sessions it waits for don't show their priority number: they follow the session waiting for them.
 
-Opening a session on hold shows a panel above its terminal with the sessions it waits for and their state. Click one to open it, **×** to stop waiting for it, **+** to find another one to wait for, or **RESUME** to take the session off hold. Sessions that others are waiting for list them under **WAITED ON BY**. Holds are saved on this Mac with your priorities and only contain session identifiers. Shepherdr also keeps a copy in Herdr, as tokens on the waiting session's pane, so a new Mac, or this one after losing its settings, gets them back from there. The copy on this Mac wins: a hold you ended here doesn't come back from Herdr. Herdr has room for about 18 holds a session; more stay on this Mac only.
+Opening a session on hold shows a panel above its terminal with the sessions it waits for and their state. Click one to open it, **×** to stop waiting for it, **+** to find another one to wait for, or **RESUME** to take the session off hold. Sessions that others are waiting for list them under **WAITED ON BY**. Holds are saved on this Mac with your priorities and only contain session identifiers. Shepherdr also keeps a copy in Herdr, as tokens on the waiting session's pane, so a new Mac, or this one after losing its settings, gets them back from there. The copy on this Mac wins: a hold you ended here doesn't come back from Herdr. Herdr has room for about 18 holds a session; more stay on this Mac only. Tokens don't outlast a restart of Herdr, so on machines with the [agent tools](#agents-that-coordinate) Shepherdr keeps one more copy in a file there, described under [When Herdr restarts](#when-herdr-restarts).
 
-A session that closes, from Shepherdr or anywhere else, drops out of holds: once its machine answers without it for 30 seconds, nothing waits for it anymore, and it no longer waits for anything. A machine that doesn't answer keeps its sessions' holds until it does. The sessions that waited for it say so in a notice.
+A session that closes, from Shepherdr or anywhere else, drops out of holds: once its machine answers without it for 30 seconds, nothing waits for it anymore, and it no longer waits for anything. A machine that doesn't answer keeps its sessions' holds until it does. The sessions that waited for it say so in a notice. A session that Herdr brought back in a new terminal after restarting hasn't closed: its holds move with it, as [When Herdr restarts](#when-herdr-restarts) explains.
 
 A shell, a pane without an agent, has no agent to hand work back, so a session waiting for one waits for the command it runs, such as a script started with `herdr pane run`. Shepherdr looks at the shell on each refresh while a session waits for it, and only then: the shell shows **running** while the command runs, and once it is back at the shell's prompt the hold finishes, with a notice. Shepherdr also notices a command that finished between two refreshes, by its output. A shell that hasn't run anything yet keeps the session waiting.
 
@@ -291,6 +303,29 @@ Shepherdr keeps the terminals of the sessions you leave, with what they last sho
 
 Shepherdr keeps up to 24 terminals out of sight, and fewer when macOS runs short of memory (8 under memory pressure, 2 when it's critical). When it has to let some go, it keeps the sessions you go back to most: each visit counts, and older visits count half as much every hour, so a session you open all day stays ahead of one you looked at once a minute ago. The open session, Compass's and the sessions that need you always stay. A terminal let go connects afresh the next time you open its session. That is not a dropped connection: nothing reconnects in the meantime. Links the session prints while the window is hidden are collected for **Resources** when it shows again.
 
+## When Herdr restarts
+
+When a machine reboots, or only its Herdr server restarts, Herdr brings its workspaces back. Each pane returns to its workspace with the same pane ID and folder, and the agent's own conversation resumes in it, as with `claude --resume`. But each comes back in a new terminal, and terminals are what Shepherdr tells sessions apart by.
+
+So Shepherdr notes each machine's sessions as it sees them: the pane and workspace of each one, and the conversation Herdr would resume. When a machine shows new terminals where its sessions were, Shepherdr takes each new terminal for the session it carries on: by its conversation, or, once none of the old terminals is left, by its pane and workspace. That session keeps its holds, its place in the queue and its group, its browser tabs and resources, its mail and your draft. This works whether Shepherdr was running at the time or not.
+
+Herdr only resumes a conversation that its integration for that agent recorded. A session without one comes back as a shell in its folder. The sidebar marks such Claude Code and Codex sessions with a small circular arrow, and the session's details say whether a conversation was recorded.
+
+On machines with the [agent tools](#agents-that-coordinate), Shepherdr also writes who waits for whom there to `~/.shepherdr/state/<its ID>`, by pane, workspace and conversation, which outlast a restart. It reads that file back only for a machine it had seen no sessions of before it started, as after losing its settings or on a new Mac. Then the holds come back even if Herdr restarted meanwhile and its tokens are gone.
+
+Under each machine, **Settings → Agents** shows what a restart would cost there, and does what it can about it:
+
+- **Herdr's version.** Herdr 0.9.4 and later keep agent sessions through a restart reliably. Updating means restarting Herdr's server, and with it every agent there, so Shepherdr leaves that to you: see [Updating Herdr](#updating-herdr).
+- **Integrations.** Whether Herdr's integrations for Claude Code and Codex are installed and current. **Install Integration** runs `herdr integration install` there. They need `python3`.
+- **Codex's shared server.** Codex 0.157 and later runs one server for all its sessions, and Herdr may then record a conversation on the wrong session, or on none. **Turn Off** runs `codex features disable daemon_auto_start`. Sessions already running keep the shared server until it stops, as after a restart.
+- **Starting with the machine.** Nothing starts Herdr after a reboot by itself, so its sessions only come back once something does.
+  - On Linux, **Start with Machine** adds and enables a systemd user service, `~/.config/systemd/user/herdr-<session>.service`, and asks systemd to start your services at boot with `loginctl enable-linger`. If that needs `sudo`, Shepherdr says so.
+  - On a Mac, **Start at Login** adds a launch agent to `~/Library/LaunchAgents`.
+  - Neither starts anything now: the server already running stays as it is.
+- **Sessions that wouldn't resume**, by name.
+
+Shepherdr checks this along with the agent tools: when a machine first answers, every six hours, and with **⌘R**.
+
 ## Agents that coordinate
 
 Agents can start sessions, wait for them and hand work back through Shepherdr, on any of your machines. They do it with `~/.shepherdr/bin/shepherdr`, a small command Shepherdr installs on each machine, and a skill that teaches Claude Code and Codex when to use it. Say "start a session on buildbox that fixes the failing test" to an agent, and it starts one there with your prompt. The new session nests under the agent's own, which goes on hold until it finishes. Handing off and closing are yours to decide: ask the new session to hand off, or use **HANDOFF AND CLOSE**, and its result comes back to the agent as a prompt. The skill tells agents never to hand off or close on their own, and never to ask the sessions they start to.
@@ -299,7 +334,7 @@ Agents can start sessions, wait for them and hand work back through Shepherdr, o
 
 The first time Shepherdr reaches a machine without the tools, its sessions show a banner: **INSTALL** copies them there over the SSH connection Shepherdr already uses; **NOT NOW** asks again next launch; **DON'T ASK HERE** never offers them for that machine. This Mac is a machine too. **Settings → Agents** installs, updates and removes them on any machine, and shows what each one has: its system, and whether Claude Code and Codex have the skill.
 
-Installing writes only `~/.shepherdr` (the command, its skill and the machine list) and the skill folders of the agents installed there, `~/.claude/skills/shepherdr` and `~/.codex/skills/shepherdr` (or under `$CODEX_HOME`). It changes no shell startup files, needs no `sudo` and doesn't touch `PATH`: agents run the command by its full path. Everything is readable only by you. The command is a POSIX `sh` script that only needs Herdr, so it runs on Linux and macOS alike. Agents already running pick up the skill when they restart; the command works right away.
+Installing writes only `~/.shepherdr` (the command, its skill, the machine list and, later, [who waits for whom](#when-herdr-restarts)) and the skill folders of the agents installed there, `~/.claude/skills/shepherdr` and `~/.codex/skills/shepherdr` (or under `$CODEX_HOME`). It changes no shell startup files, needs no `sudo` and doesn't touch `PATH`: agents run the command by its full path. Everything is readable only by you. The command is a POSIX `sh` script that only needs Herdr, so it runs on Linux and macOS alike. Agents already running pick up the skill when they restart; the command works right away.
 
 When Shepherdr brings newer tools, the machine's sessions offer **UPDATE**. **Settings → Agents → Updates** can update them without asking, or never. If you install Claude Code or Codex on a machine after the tools, Shepherdr adds the skill the next time it checks that machine. **Remove** deletes the command and the skills; the letters stay in `~/.shepherdr` until you delete it.
 
@@ -313,12 +348,16 @@ When Shepherdr brings newer tools, the machine's sessions offer **UPDATE**. **Se
 | `shepherdr handoff [--to NAME] [--file F]… [MESSAGE \| --message-file F]` | Hands work back to the session waiting for the caller, or to a named one, when you ask |
 | `shepherdr wait-for NAME…` / `resume [NAME…]` | Puts the caller on hold for other sessions, or takes it off |
 | `shepherdr pin URL [--title TEXT]` | Adds a link to the caller's resources |
-| `shepherdr open URL` | Opens a page in the caller's browser in Shepherdr |
+| `shepherdr open URL\|FILE` | Opens a page or a file in the caller's browser in Shepherdr |
 | `shepherdr notify MESSAGE` | Shows you a notification |
 | `shepherdr close [--force] [NAME…]` | Asks you to close those sessions, or the caller's own |
 | `shepherdr status` | This machine, the caller's pane and letters no Shepherdr has taken yet |
 
 `spawn` creates a Herdr workspace in the folder (or splits the caller's pane with `--split`), starts the agent, by default the caller's own kind, and sends it the prompt. Shepherdr puts the new session right after the caller, in its group, nested under it, and keeps the caller on hold until the new one finishes; `--no-wait`, which the skill keeps for when you ask for a session that isn't linked, only places it. If the agent stops at a startup question, such as trusting the folder, Shepherdr sends the prompt once it is ready. Names are Herdr agent names, and the workspace gets the same one. A session asked for on this Mac starts once the Mac is awake and online, as [Compass's runs](#runs) do.
+
+Ask an agent to show you a page or a file in Shepherdr and it runs `shepherdr open`. A file on this Mac opens itself in the session's browser, with the pictures and pages beside it. From another machine, the letter brings a copy of the file, up to 5 MB, which waits for you as a page does: files beside it don't come along.
+
+The skill also asks agents to write the files they mention as paths relative to their working folder, such as `src/api/cache.ts:42`, so you can click them. Agents always see that in the skill's description; the skill itself explains it once they use it.
 
 A handoff goes to the sessions waiting for its sender, unless `--to` names another by its agent or workspace name, with `@machine` to tell machines apart. Shepherdr delivers it as a prompt once that session is free (idle or done), one at a time, with the message and the paths of its files; to a session on this Mac, only while the Mac is awake and online, as [Compass's runs](#runs) are. The files are kept on this Mac in `~/.shepherdr/inbox`; for a session on another machine, Shepherdr copies them there first. If nobody waits for its sender, the handoff waits in the session's mail panel with **SEND TO**.
 
@@ -338,7 +377,7 @@ Letters are data: Shepherdr checks every field, accepts only http and https link
 
 - **Handoffs to a session on a different machine**, since their text becomes a prompt for an agent there: **LET THROUGH** delivers them, **VIEW** shows the message first.
 - **Requests for sessions** on machines it can't reach: **START** starts it with the requested folder, agent and prompt, linked to the session that asked.
-- **Pages to open:** **OPEN** opens it in the session's browser.
+- **Pages and files to open:** **OPEN** opens it in the session's browser. A file is the copy that came with the letter.
 - **Requests to close a session**, from any machine, this Mac included: **CLOSE** closes it.
 
 **Settings → Agents → Trust its letters** lets a machine's letters through without asking, except requests to close a session. A cyan envelope means mail waits for its session to be free. Shepherdr keeps the letters' files for a month.

@@ -98,7 +98,7 @@ done_test() { passed=$((passed + 1)); }
 setup version
 run version
 expect_status 0
-expect_output "shepherdr 6 (protocol 1)"
+expect_output "shepherdr 7 (protocol 1)"
 run help
 expect_output "shepherdr spawn [options]"
 run skill
@@ -385,6 +385,24 @@ run open "javascript:alert(1)"
 expect_status 2
 run open "https://example.com/a b"
 expect_status 2
+run open "missing.html"
+expect_status 2
+expect_output "No file at missing.html"
+run open .
+expect_status 2
+expect_no_letter
+mkdir -p "$home/work dir/out"
+printf '<h1>Report</h1>\n' >"$home/work dir/out/report v2.html"
+run open "out/report v2.html"
+expect_status 0
+expect_output "opens a copy"
+the_letter
+expect_json "\"kind\":\"open\",\"from\":{\"pane\":\"w1:p1\",\"terminal\":\"term_caller1\"},\"path\":\"$home/work dir/out/report v2.html\",\"files\":[\"files/report_v2.html\"]"
+cmp -s "$letter/files/report_v2.html" "$home/work dir/out/report v2.html" || problem "the file wasn't copied"
+expect_doorbell
+rm -rf "$home/.shepherdr/outbox"
+run_outside open "out/report v2.html"
+expect_status 1
 expect_no_letter
 done_test
 

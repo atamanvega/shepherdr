@@ -196,3 +196,77 @@ struct UpdateBanner: View {
             .buttonStyle(.plain).foregroundStyle(Theme.dim).help("Dismiss")
     }
 }
+
+/// Machines whose Herdr is older than the release Shepherdr recommends. The sidebar's foot offers
+/// the update until they have it; putting it off hides the offer for a day.
+@MainActor @Observable
+final class HerdrUpdateNotice {
+    private static let putOffKey = "herdrUpdatePutOff"
+    private(set) var putOffUntil = UserDefaults.standard.object(forKey: putOffKey) as? Date
+
+    /// The machines that answer with an older Herdr, unless the offer is put off.
+    func behind(_ machines: [MachineState], now: Date = Date()) -> [MachineState] {
+        if let putOffUntil, now < putOffUntil { return [] }
+        return machines.filter { $0.machine.isEnabled && $0.connection == .online && HerdrRelease.isBehind($0.snapshot?.version) }
+    }
+
+    func putOff() {
+        putOffUntil = Date().addingTimeInterval(86_400)
+        UserDefaults.standard.set(putOffUntil, forKey: Self.putOffKey)
+    }
+}
+
+/// Where the sidebar asks you to update Herdr on the machines that run an older one. Shepherdr
+/// doesn't update it: the server must restart, and with it every agent there.
+struct HerdrUpdateBanner: View {
+    let model: AppModel
+    @ViewState private var showsHow = false
+
+    var body: some View {
+        let behind = model.herdrUpdate.behind(model.cluster.machines)
+        if !behind.isEmpty {
+            VStack(alignment: .leading, spacing: 7) {
+                Text("↑ UPDATE HERDR TO \(HerdrRelease.recommended)").font(Theme.mono(10.5, .bold)).tracking(1).foregroundStyle(Theme.amber)
+                Text(HerdrRelease.summary(behind.map { (name: name(of: $0), version: $0.snapshot?.version ?? "") }) + ".")
+                    .font(Theme.mono(10)).foregroundStyle(Theme.text.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
+                Text("It keeps agents' sessions when a Mac restarts or a machine crashes, and shows Claude Code's questions in named sessions.")
+                    .font(Theme.mono(10)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    Button("HOW") { showsHow.toggle() }
+                        .buttonStyle(ConsoleButtonStyle(tint: Theme.amber, prominent: true))
+                        .popover(isPresented: $showsHow, arrowEdge: .trailing) { how }
+                    Button("NOTES") { NSWorkspace.shared.open(HerdrRelease.notes) }
+                        .buttonStyle(ConsoleButtonStyle(tint: Theme.dim))
+                        .help("What changed in Herdr, on GitHub")
+                    Button("LATER") { model.herdrUpdate.putOff() }
+                        .buttonStyle(ConsoleButtonStyle(tint: Theme.dim))
+                        .help("Ask again tomorrow")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Theme.amber.opacity(0.07))
+            .overlay(alignment: .top) { Rectangle().fill(Theme.line).frame(height: 1) }
+        }
+    }
+
+    private func name(of state: MachineState) -> String {
+        state.machine.isLocal ? "This Mac" : state.machine.name
+    }
+
+    private var how: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ON EACH MACHINE").font(Theme.mono(9.5, .semibold)).tracking(1.2).foregroundStyle(Theme.faint)
+            Text("1. Install it: herdr update, or brew upgrade herdr where Homebrew installed it. Its server keeps running the old version.")
+            Text("2. When no agent is in the middle of something, restart its server: herdr server stop, or herdr session stop NAME for a named session. Then open Herdr again, or start the service that runs it.")
+            Text("Agents whose conversation Herdr recorded come back where they were, and Shepherdr keeps their holds and their place in the queue. Settings → Agents shows which would come back as shells.")
+                .foregroundStyle(Theme.dim)
+        }
+        .font(Theme.mono(10.5)).foregroundStyle(Theme.text)
+        .textSelection(.enabled)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: 360, alignment: .leading)
+        .padding(14)
+        .background(Theme.panel)
+    }
+}

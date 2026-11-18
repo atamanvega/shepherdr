@@ -83,6 +83,20 @@ struct PaneDTO: Decodable, Sendable {
     let cwd: String?
     let foregroundCwd: String?
     let tokens: [String: String]?
+    let agentSession: AgentSessionDTO?
+}
+
+/// The agent's own conversation in a pane, as Herdr's integration for that agent reported it: what
+/// Herdr resumes it from after its server restarts.
+struct AgentSessionDTO: Decodable, Sendable {
+    let agent: String?
+    let value: String?
+
+    /// `claude:<session ID>`, or nil when Herdr didn't say.
+    var conversation: String? {
+        guard let agent = agent?.nonempty, let value = value?.nonempty else { return nil }
+        return "\(agent):\(value)"
+    }
 }
 
 struct AgentDTO: Decodable, Sendable {
@@ -100,6 +114,7 @@ struct AgentDTO: Decodable, Sendable {
     let terminalTitleStripped: String?
     let tokens: [String: String]?
     let launchPending: Bool?
+    let agentSession: AgentSessionDTO?
 }
 
 struct WorkspaceCreatedDTO: Decodable {
@@ -247,7 +262,8 @@ enum HerdrJSON {
                 // /home/… goes through the automounter on every refresh.
                 project: workspace?.worktree?.repoName ?? directory.map { ($0 as NSString).lastPathComponent },
                 summary: item.tokens?["summary"]?.nonempty ?? item.title?.nonempty ?? item.terminalTitleStripped?.nonempty,
-                isLaunchPending: item.launchPending ?? false
+                isLaunchPending: item.launchPending ?? false,
+                conversation: item.agentSession?.conversation ?? pane?.agentSession?.conversation
             )
         }
         // `shepherdr` rings a pane's doorbell with the ID of the letter it just left.
@@ -275,7 +291,9 @@ enum HerdrJSON {
                              workspaceName: workspaces[pane.workspaceId]?.label.nonempty ?? pane.workspaceId,
                              title: agents.first { $0.id.terminalID == pane.terminalId }?.name
                                 ?? "\(tabs[pane.tabId]?.label.nonempty ?? pane.tabId) · \(pane.paneId)",
-                             directory: pane.foregroundCwd?.nonempty ?? pane.cwd?.nonempty)
+                             directory: pane.foregroundCwd?.nonempty ?? pane.cwd?.nonempty,
+                             conversation: pane.agentSession?.conversation
+                                ?? dto.agents.first { $0.terminalId == pane.terminalId }?.agentSession?.conversation)
             }, doorbells: doorbells, tokens: tokens, layouts: layouts(dto.layouts?.compactMap(\.value) ?? []))
     }
 

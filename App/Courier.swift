@@ -111,6 +111,7 @@ final class Courier {
         }
         confirmPending()
         syncLists()
+        syncStates()
         deliver()
         settleMissingRecipients()
         advanceHandoffCloses()
@@ -161,6 +162,8 @@ final class Courier {
                 return
             }
             self.tools.record(found, on: machineID, bundled: kit.version)
+            if let state = found.state { self.adoptState(state, from: machineID) }
+            await self.checkRestarts(machineID)
             if found.version == nil { return }
             if found.waitingLetters > 0 {
                 await self.collectNow(machineID)
@@ -175,6 +178,44 @@ final class Courier {
             } else {
                 await self.writeListIfNeeded(machineID)
             }
+        }
+    }
+
+    // MARK: Restarts
+
+    /// How ready each machine is for its Herdr server to restart, as last checked along with its tools.
+    private(set) var restarts: [String: RestartReadiness] = [:]
+    /// What the last change for restarts on a machine said, or why it failed.
+    private(set) var restartNotes: [String: String] = [:]
+    /// Machines being changed for restarts right now.
+    private(set) var preparing = Set<String>()
+
+    private func checkRestarts(_ machineID: String) async {
+        guard let machine = machine(machineID), let found = try? await RestartCheck.check(machine) else { return }
+        restarts[machineID] = found
+    }
+
+    /// What a restart of a machine's Herdr server would cost, from its last check and its sessions.
+    func restartFindings(_ state: MachineState) -> [RestartFinding] {
+        guard let readiness = restarts[state.id] else { return [] }
+        return RestartCheck.findings(readiness, machine: state.machine, herdrVersion: state.snapshot?.version, sessions: state.agents)
+    }
+
+    /// Makes a change on a machine you asked for, then looks again.
+    func prepare(_ fix: RestartFinding.Fix, on machineID: String) {
+        guard !preparing.contains(machineID) else { return }
+        preparing.insert(machineID)
+        restartNotes[machineID] = nil
+        enqueue(machineID) { [weak self] in
+            guard let self else { return }
+            defer { self.preparing.remove(machineID) }
+            guard let machine = self.machine(machineID) else { return }
+            do {
+                self.restartNotes[machineID] = try await RestartCheck.apply(fix, on: machine)
+            } catch {
+                self.restartNotes[machineID] = AppModel.failure(error).message
+            }
+            await self.checkRestarts(machineID)
         }
     }
 
@@ -269,6 +310,58 @@ final class Courier {
             listFailures[machineID] = nil
         } catch {
             listFailures[machineID] = Date()
+        }
+    }
+
+    // MARK: State files
+
+    /// What each machine's state file says as last written, so it's written again only when that changes.
+    @ObservationIgnored private var writtenStates: [String: SessionStateFile] = [:]
+    @ObservationIgnored private var stateFailures: [String: Date] = [:]
+    /// Machines whose state file was read this launch.
+    @ObservationIgnored private var adoptedStates = Set<String>()
+
+    /// This Shepherdr's state file for a machine: who waits for whom among its sessions.
+    private func stateFile(for machineID: String) -> SessionStateFile? {
+        guard let model else { return nil }
+        return SessionStateFile.make(holds: model.relations.holds, on: machineID, footprints: model.footprints.footprints,
+                                     names: MachineList.uniqueNames(catalog, macName: tools.macName),
+                                     instance: tools.instanceID, mac: tools.macName)
+    }
+
+    /// Keeps the state file current on each machine with the tools, once it was checked.
+    private func syncStates() {
+        guard let cluster else { return }
+        for state in cluster.machines where state.connection == .online && tools.status(on: state.id).isInstalled {
+            let id = state.id
+            guard let file = stateFile(for: id), writtenStates[id] != file, !busy.contains("state:\(id)"),
+                  Date().timeIntervalSince(stateFailures[id] ?? .distantPast) > Self.recheck,
+                  let machine = machine(id) else { continue }
+            busy.insert("state:\(id)")
+            enqueue(id) { [weak self] in
+                guard let self else { return }
+                defer { self.busy.remove("state:\(id)") }
+                do {
+                    try await AgentTools.writeState(file, on: machine)
+                    self.writtenStates[id] = file
+                    self.stateFailures[id] = nil
+                } catch {
+                    self.stateFailures[id] = Date()
+                }
+            }
+        }
+    }
+
+    /// Holds from the newest state file on a machine this Shepherdr had seen no sessions of before
+    /// this launch, as after losing its settings: for waiting sessions it has no record of.
+    private func adoptState(_ data: Data, from machineID: String) {
+        guard let model, !model.footprints.knownAtLaunch.contains(machineID), adoptedStates.insert(machineID).inserted,
+              let file = try? JSONDecoder().decode(SessionStateFile.self, from: data) else { return }
+        let ids = Dictionary(MachineList.uniqueNames(catalog, macName: tools.macName).map { ($0.value, $0.key) },
+                             uniquingKeysWith: { first, _ in first })
+        for (waiter, list) in file.holds(on: machineID, footprints: model.footprints.footprints, machines: ids)
+            where model.relations.holds[waiter] == nil && !model.relations.unsynced.contains(waiter) {
+            model.relations.setHolds(list, for: waiter)
         }
     }
 
@@ -552,6 +645,15 @@ final class Courier {
         handoffCloses[id] = nil
     }
 
+    /// Mail and closes for sessions that came back in new terminals follow them there.
+    func rebind(_ moves: [Agent.ID: Agent.ID]) {
+        mail.rebind(moves)
+        for (old, new) in moves {
+            if closingWhenFree.remove(old) != nil { closingWhenFree.insert(new) }
+            if let date = lastDelivery.removeValue(forKey: old) { lastDelivery[new] = date }
+        }
+    }
+
     /// Asks the agents that are free now, and gives up on handoffs that never came.
     private func advanceHandoffCloses() {
         guard let model else { return }
@@ -721,7 +823,7 @@ final class Courier {
         switch item.kind {
         case .handoff, .prompt: "A handoff"
         case .spawnRequest: "A session request"
-        case .openPage: "A page"
+        case .openPage: item.url?.isFileURL == true ? "A file" : "A page"
         case .close: "A close request"
         }
     }

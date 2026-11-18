@@ -22,10 +22,11 @@ enum ProjectsFolder {
     }
 }
 
-/// Creates a Herdr workspace with a shell in it: in a folder, in a new worktree of a folder's
-/// repository, or from a GitHub link, cloning the repository first when the machine doesn't have
-/// it and checking a pull request's branch out in a worktree. Starting an agent there is up to
-/// the user; Shepherdr picks it up as soon as Herdr detects it.
+/// Creates a Herdr workspace with a shell or an agent in it: in a folder, in a new worktree of a
+/// folder's repository, or from a GitHub link, cloning the repository first when the machine
+/// doesn't have it and checking a pull request's branch out in a worktree. An agent gets its first
+/// prompt once it's ready. The agent last chosen is chosen again, unless what opened the sheet
+/// asks for one.
 struct NewSessionSheet: View {
     @Bindable var model: AppModel
     let draft: NewSessionDraft
@@ -44,7 +45,7 @@ struct NewSessionSheet: View {
     /// What GitHub said about the pull request in the folder field.
     @ViewState<PullLookup?> private var pull: PullLookup? = nil
     @FocusState private var focus: Field?
-    /// An agent to start and its first prompt, when something asked for them, such as a Compass page.
+    /// The agent to start, nil for a shell, and its first prompt.
     @ViewState<String?> private var agentKind: String?
     @ViewState<String> private var prompt: String
     @ViewState<Bool> private var compassWaits: Bool
@@ -65,7 +66,7 @@ struct NewSessionSheet: View {
         _machineID = ViewState(initialValue: draft.machineID)
         _directory = ViewState(initialValue: draft.directory.map { ($0 as NSString).abbreviatingWithTildeInPath } ?? "")
         _name = ViewState(initialValue: draft.name ?? "")
-        _agentKind = ViewState(initialValue: draft.agentKind)
+        _agentKind = ViewState(initialValue: draft.agentKind ?? (draft.compass == nil && draft.prompt == nil ? Self.lastAgentKind : nil))
         _prompt = ViewState(initialValue: draft.prompt ?? "")
         _compassWaits = ViewState(initialValue: draft.compass?.compassWaits ?? false)
         _placement = ViewState(initialValue: draft.placement)
@@ -73,8 +74,12 @@ struct NewSessionSheet: View {
         _branch = ViewState(initialValue: draft.worktreeBranch ?? "")
     }
 
-    /// Asked for with an agent or a prompt: the sheet starts the agent too.
-    private var startsAgent: Bool { draft.compass != nil || draft.agentKind != nil || draft.prompt != nil }
+    static let agentKey = "newSessionAgent"
+
+    /// The agent chosen for the last session, if it was one.
+    private static var lastAgentKind: String? {
+        UserDefaults.standard.string(forKey: agentKey).flatMap { NewSessionRequest.agentKinds.contains($0) ? $0 : nil }
+    }
 
     private var machine: MachineState? {
         let id = machineID ?? lastMachineID
@@ -109,7 +114,8 @@ struct NewSessionSheet: View {
     private var resolvedName: String {
         let base = suggestedName
         // Herdr names agents with lowercase letters, digits, - and _.
-        return startsAgent && agentKind != nil && !base.isEmpty ? Self.agentName(from: base, kind: agentKind ?? "agent") : base
+        guard let agentKind, !base.isEmpty else { return base }
+        return Self.agentName(from: base, kind: agentKind)
     }
 
     /// The name typed, or one made from the link, the branch or the folder.
@@ -142,9 +148,10 @@ struct NewSessionSheet: View {
     private var whereabouts: String { isLocal ? "on this Mac" : "on \(machine?.machine.name ?? "that machine")" }
     private var subtitle: String {
         if draft.compass != nil { return "asked for by your Compass page" }
+        let what = agentKind.map { AgentProgram(label: $0).name } ?? "a shell"
         guard case .into(let groupID) = draft.placement,
-              let group = model.groups.first(where: { $0.id == groupID }) else { return "a new herdr workspace with a shell in it" }
-        return "a new herdr workspace with a shell, in \(group.name)"
+              let group = model.groups.first(where: { $0.id == groupID }) else { return "a new herdr workspace with \(what) in it" }
+        return "a new herdr workspace with \(what), in \(group.name)"
     }
 
     var body: some View {
@@ -188,12 +195,7 @@ struct NewSessionSheet: View {
                     .focused($focus, equals: .name)
             }
 
-            if startsAgent {
-                agentFields
-            } else {
-                Text("Start an agent in its terminal when you need one; the session joins the queue as soon as Herdr detects it.")
-                    .font(Theme.mono(10)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
-            }
+            agentFields
 
             if let newProject {
                 VStack(alignment: .leading, spacing: 3) {
@@ -241,8 +243,8 @@ struct NewSessionSheet: View {
         .task(id: pullKey) { await lookUpPullRequest() }
     }
 
-    /// The agent, its first prompt, where the session goes and whether it reports back: for a
-    /// session something asked for, so you see all of it before it starts.
+    /// The agent, or a shell, and its first prompt; for a session a Compass page asked for, also
+    /// where it goes and whether it reports back, so you see all of it before it starts.
     @ViewBuilder private var agentFields: some View {
         field("Agent") {
             Picker("", selection: $agentKind) {
@@ -262,7 +264,10 @@ struct NewSessionSheet: View {
                     .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.line, lineWidth: 1))
             }
             Text(draft.compass != nil ? "Sent once the agent is ready. Read it before you start: it came from a page built with what others wrote."
-                                      : "Sent once the agent is ready.")
+                                      : "Sent once the agent is ready. Leave it empty to write it in the terminal.")
+                .font(Theme.mono(10)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text("Start an agent in its terminal when you need one; the session joins the queue as soon as Herdr detects it.")
                 .font(Theme.mono(10)).foregroundStyle(Theme.faint).fixedSize(horizontal: false, vertical: true)
         }
         if draft.compass != nil {
@@ -537,13 +542,14 @@ struct NewSessionSheet: View {
     }
 
     private func open(_ path: String, worktree: NewSessionRequest.Worktree?, pins: [URL] = [], on machine: MachineState) {
-        let kind = startsAgent ? agentKind : nil
+        let kind = agentKind
+        UserDefaults.standard.set(kind ?? "", forKey: Self.agentKey)
         let request = NewSessionRequest(directory: path, name: resolvedName, agentKind: kind, worktree: worktree)
         let first = kind == nil ? nil : prompt.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
         var from = draft.compass
         from?.compassWaits = compassWaits && kind != nil
         Task {
-            failure = await model.createSession(request, onMachine: machine.id, placement: startsAgent ? placement : draft.placement,
+            failure = await model.createSession(request, onMachine: machine.id, placement: placement,
                                                 pins: pins + draft.pins, prompt: first, compass: from)
         }
     }

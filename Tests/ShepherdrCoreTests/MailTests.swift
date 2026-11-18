@@ -198,6 +198,22 @@ struct MailPlannerTests {
         #expect(MailPlanner.plan(open, folder: "/x", context: context(.local)) ==
                 [.open(.init(machineID: "local", terminalID: "term_fixer"), URL(string: "http://localhost:3000")!)])
 
+        // A file opens itself from this Mac, and its copy from elsewhere, once the user lets it.
+        let file = try letter("{\(from),\"kind\":\"open\",\"path\":\"/work/out/report v2.html\",\"files\":[\"files/report_v2.html\"]}",
+                              files: ["files/report_v2.html": Data("<h1>Report</h1>".utf8)])
+        #expect(file.content == .openFile(copy: "files/report_v2.html", path: "/work/out/report v2.html"))
+        #expect(MailPlanner.plan(file, folder: "/inbox/local/20261015T101502Z-7f3a9c", context: context(.local)) ==
+                [.open(.init(machineID: "local", terminalID: "term_fixer"), URL(fileURLWithPath: "/work/out/report v2.html"))])
+        let copy = URL(fileURLWithPath: "/inbox/buildbox/20261015T101502Z-7f3a9c/files/report_v2.html")
+        let fileSuggested = items(MailPlanner.plan(file, folder: "/inbox/buildbox/20261015T101502Z-7f3a9c", context: context(box)))
+        #expect(fileSuggested[0].kind == .openPage && fileSuggested[0].status == .needsApproval && fileSuggested[0].url == copy)
+        #expect(MailPlanner.plan(file, folder: "/inbox/buildbox/20261015T101502Z-7f3a9c", context: context(box, trusted: true)) == [.open(sender, copy)])
+        // A file needs its copy, and a path it names is absolute.
+        #expect(throws: LetterError.self) { try letter("{\(from),\"kind\":\"open\",\"path\":\"/work/a.html\",\"files\":[]}") }
+        #expect(throws: LetterError.self) {
+            try letter("{\(from),\"kind\":\"open\",\"path\":\"a.html\",\"files\":[\"files/a.html\"]}", files: ["files/a.html": Data()])
+        }
+
         let notice = try letter("{\(from),\"kind\":\"notify\"}", message: "Migration finished")
         #expect(MailPlanner.plan(notice, folder: "/x", context: context(box)) == [.notify(sender, "Migration finished")])
 

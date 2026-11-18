@@ -1,5 +1,54 @@
 # Verification
 
+## Opening files from agents, the address field, New Session and the Herdr update offer (unreleased)
+
+Validated on 2026-11-06 on macOS 26.6.2 with Xcode 27 / Swift 6.4 and Herdr 0.9.3:
+
+- `swift test`: **340 tests passed**, and the 10 terminal UI tests. `sh Tests/AgentTools/test.sh` passed its 21 tests with sh, dash and bash.
+  - `shepherdr open FILE` writes an `open` letter with the file's absolute path and a copy in `files/`. It refuses a missing file, a folder, other schemes and calls from outside Herdr.
+  - `LetterTests` read the letter back. They refuse it without its one copy, or with a relative path.
+  - `MailPlanner` opens the file itself for a letter from this Mac. From another machine it opens the copy, and asks first unless the machine is trusted.
+  - `BrowserAddressTests` cover web addresses, `file://` links, with spaces as pasted, from `localhost` or with a section, and paths from `/` and `~`.
+  - `HerdrReleaseTests` ask machines below 0.9.5 to update, and not those it can't read a version for.
+- **The address field's `file://` bug.** `URL(string: "file:///…").host()` is nil, and the field dropped any address without a host, without a word.
+- **Files in WebKit.** A text file and an SVG loaded with `loadFileURL` in an off-screen `WKWebView` rendered in its snapshot, as the browser now loads every file that isn't Markdown or HTML.
+- **End to end,** with a scratch copy of the app, with its own bundle ID and defaults, in a scratch home against a Herdr 0.9.3 server of its own, and a stand-in Claude Code in one pane:
+  - `shepherdr open notes/plan.md` in that pane: Shepherdr collected the letter and kept its copy in the inbox. It opened the file itself in a tab of that session's browser, which came back after a relaunch.
+  - The foot of the sidebar offered Herdr 0.9.5, saying that this Mac runs 0.9.3.
+- **Not checked by hand:**
+  - The page drawn in that tab: the scratch window was behind others, where WebKit doesn't draw.
+  - Typing an address into the field.
+  - The New Session sheet with its agent and first prompt, and a session started from it with an agent. The sheet opened in the scratch copy, but it couldn't be captured.
+  - A file opened from another machine, and **HOW** in the Herdr offer.
+
+## Sessions carried through Herdr restarts (unreleased)
+
+Validated on 2026-11-03 on macOS 26.6.2 with Xcode 27 / Swift 6.4 and Herdr 0.9.3:
+
+- **The cause,** read over SSH without changing anything. A Linux machine running Herdr 0.9.2 rebooted.
+  - Herdr brought all its workspaces back, and resumed the 33 Claude Code conversations it had recorded.
+  - Shepherdr kept holds, priorities and tabs by terminal ID, and every terminal had a new one. So 30 seconds after the machine answered again, the holds were dropped as if their sessions had closed.
+  - Two of the three Codex sessions had no conversation recorded. Codex's shared server was on.
+  - Nothing starts Herdr there after a reboot.
+- `swift test`: **337 tests passed**, and the 10 terminal UI tests.
+  - `SessionRebindingTests` pair old terminals with new ones by conversation, then, only once none of the old terminals is left, by pane and workspace. They check that what two sessions share, or disagree on, pairs nothing.
+  - Footprints outlast a relaunch, and wait for a machine that shows no sessions yet. Holds, the queue and groups, tabs, the last selection, visits and mail move to the new terminals.
+  - State files bring holds back onto restored sessions, here and on other machines.
+  - `RestartCheckTests` parse a machine's answer, and turn it into findings and fixes. The service script runs against stand-ins for `systemctl`, `loginctl` and `uname`: it writes the unit for the session with its `PATH` and `LANG`, enables it without starting it, and says when lingering needs `sudo`. It refuses a session name that isn't one.
+  - `AgentToolsTests` write state files and read back the newest within a week. `DecodingTests` read `agent_session` from panes and agents.
+- **Herdr restarts, end to end.** A scratch copy of the app, with its own bundle ID and defaults, ran in a scratch home against a Herdr 0.9.3 server of its own. Three stand-in agents had recorded conversations on two of them. One session waited for another, both in a group, with a browser tab. Each run below ended with the same sessions in new terminals:
+  - **Shepherdr running.** Herdr was stopped for 40 seconds, then started. Herdr resumed both recorded conversations. More than a minute later, the hold, the group, the order, the tab and the last selection were all on the new terminals, and the hold's token had been written on the new pane.
+  - **Shepherdr closed.** Herdr restarted while Shepherdr was closed. On launch, the same things moved.
+  - **Settings lost.** Shepherdr's settings were deleted, then Herdr restarted, which cleared the tokens. On launch, the hold came back from the state file. The groups didn't, as the file only keeps holds.
+- **Checks on real machines,** read-only, on this Mac and the Linux machine. They found the following, as `herdr integration status`, `codex features list`, systemd and `loginctl` say:
+  - **This Mac:** Herdr 0.9.3, Herdr's Claude Code integration out of date, Codex's shared server on, and no launch agent.
+  - **The Linux machine:** Herdr 0.9.2, both integrations current, Codex's shared server on, no service, and no lingering.
+  - A second `herdr server` for a session that has one exits with status 1.
+- **Not checked by hand:**
+  - The buttons in **Settings → Agents**, and the sidebar mark, on screen.
+  - A real systemd unit starting at boot.
+  - A launch agent starting at login.
+
 ## Letters carried out once by any Shepherdr (0.9.2)
 
 Validated on 2026-11-01 on macOS 26.6.2 with Xcode 27 / Swift 6.4 and Herdr 0.9.3:

@@ -12,7 +12,7 @@ public struct MailItem: Identifiable, Codable, Equatable, Sendable {
         case prompt
         /// A session on a machine the sender can't reach.
         case spawnRequest
-        /// A page a session on another machine suggests opening.
+        /// A page or a file a session on another machine suggests opening.
         case openPage
         /// A session an agent asks to close, its own or another: it closes only when the user
         /// presses CLOSE.
@@ -47,7 +47,7 @@ public struct MailItem: Identifiable, Codable, Equatable, Sendable {
     /// The machine the letter came from.
     public let origin: String
     public let originName: String
-    public let sender: Agent.ID?
+    public var sender: Agent.ID?
     /// Who the sender was when the letter arrived, such as `fixer`.
     public let senderName: String?
     public var recipient: Agent.ID?
@@ -303,6 +303,17 @@ public enum MailPlanner {
 
         case .open(let url):
             guard let sender else { return [needsSender("open a page")] }
+            if origin.isLocal || context.isTrusted { return [.open(sender, url)] }
+            var kept = item(.openPage, recipient: sender, status: .needsApproval)
+            kept.url = url
+            return [.keep(kept)]
+
+        case .openFile(let copy, let path):
+            guard let sender else { return [needsSender("open a file")] }
+            // On this Mac the file itself opens, with the pictures beside it and the edits made to
+            // it since; from another machine, the copy that came with the letter.
+            if origin.isLocal, let path { return [.open(sender, URL(fileURLWithPath: path))] }
+            let url = URL(fileURLWithPath: folder, isDirectory: true).appendingPathComponent(copy)
             if origin.isLocal || context.isTrusted { return [.open(sender, url)] }
             var kept = item(.openPage, recipient: sender, status: .needsApproval)
             kept.url = url

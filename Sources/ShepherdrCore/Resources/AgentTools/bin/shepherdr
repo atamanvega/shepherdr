@@ -632,15 +632,32 @@ cmd_pin() {
     say "Shepherdr adds the link to this session's resources."
 }
 
+# A link, or a file: the letter brings a copy of the file, for a Shepherdr on another machine,
+# and says where it is, so Shepherdr on this one opens the file itself.
 cmd_open() {
-    [ $# -eq 1 ] || usage_error "open takes one link."
-    is_url "$1" || usage_error "open takes an http or https link."
+    [ $# -eq 1 ] || usage_error "open takes one link or file."
+    path_json='' open_json=''
+    if is_url "$1"; then
+        url_json=$(json_string "$1") || usage_error "Not a link: $1"
+        open_json=",\"url\":$url_json"
+    else
+        case $1 in *://*) usage_error "open takes an http or https link, or a file's path." ;; esac
+        [ -e "$1" ] || usage_error "No file at $1. open takes an http or https link, or a file's path."
+        [ -f "$1" ] || usage_error "$1 isn't a file. open takes an http or https link, or a file's path."
+        case $1 in *"$nl"*) usage_error "File paths can't have line breaks." ;; esac
+        op_folder=$(CDPATH='' cd -- "$(dirname -- "$1")" && pwd -P) || fail "Could not open $1."
+        op_path=$op_folder/$(basename -- "$1")
+        path_json=$(json_string "$op_path") || usage_error "The file's path has control characters."
+    fi
     learn_caller
-    [ -n "$caller_terminal" ] || fail "Run this inside a Herdr pane: the page opens in that pane's session."
-    url_json=$(json_string "$1") || usage_error "Not a link: $1"
+    [ -n "$caller_terminal" ] || fail "Run this inside a Herdr pane: it opens in that pane's session."
     begin_letter
-    finish_letter open ",\"url\":$url_json"
-    say "Shepherdr opens it in this session's browser. From another machine, it only suggests it to the user."
+    if [ -n "$path_json" ]; then
+        attach_files "$1"
+        open_json=",\"path\":$path_json,\"files\":[${files_json}]"
+    fi
+    finish_letter open "$open_json"
+    say "Shepherdr opens it in this session's browser. From another machine it opens a copy, which may wait for the user to let it through."
 }
 
 cmd_notify() {
@@ -700,7 +717,7 @@ Usage:
   shepherdr resume [NAME...]           Stop waiting for them, or for all
   shepherdr close [--force] [NAME...]  Ask the user to close sessions, or this one
   shepherdr pin URL [--title TEXT]     Add a link to this session's resources
-  shepherdr open URL                   Open a page in this session's browser
+  shepherdr open URL|FILE              Open a page or a file in this session's browser
   shepherdr notify MESSAGE             Show the user a notification
   shepherdr status                     This machine, this pane and letters not collected yet
   shepherdr skill                      Print the instructions for agents

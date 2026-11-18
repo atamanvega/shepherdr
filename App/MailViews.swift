@@ -143,7 +143,7 @@ struct MailPanel: View {
         case .handoff: "HANDOFF"
         case .prompt: "FIRST PROMPT"
         case .spawnRequest: "SESSION REQUEST"
-        case .openPage: "PAGE"
+        case .openPage: item.url?.isFileURL == true ? "FILE" : "PAGE"
         case .close: "CLOSE REQUEST"
         }
     }
@@ -167,7 +167,9 @@ struct MailPanel: View {
             let what = request.agent ?? "a shell"
             return "\(what) on \(request.machine), in \(request.directory)" + (item.hasMessage ? " · with a prompt" : "")
         case .openPage:
-            return item.url?.absoluteString
+            // A file is a copy in the inbox: its name says more than where Shepherdr keeps it.
+            guard let url = item.url else { return nil }
+            return url.isFileURL ? url.lastPathComponent : url.absoluteString
         case .close:
             let target = item.recipient.flatMap { model.row(for: $0) }.map(\.workspace) ?? item.addressedTo ?? "a session"
             return "Close \(target): its pane and its agent end."

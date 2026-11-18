@@ -433,6 +433,11 @@ private struct SessionDetails: View {
                 field("Pane", row.agent.paneID)
                 field("Directory", row.agent.directory ?? "Not reported")
                 if row.agent.isLaunchPending { field("Launch", "Pending in Herdr") }
+                if let conversation = row.agent.conversation {
+                    field("Conversation", "\(conversation) · Herdr resumes it after a restart")
+                } else if row.agent.isUnrecorded {
+                    field("Conversation", "Not recorded · after a restart, this session comes back as a shell")
+                }
             } else {
                 field("Pane", context.target.title)
             }

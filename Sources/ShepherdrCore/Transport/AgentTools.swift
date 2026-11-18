@@ -37,6 +37,8 @@ public enum AgentTools {
         public var agents: [AgentHome] = []
         /// Letters in the outbox that no Shepherdr has claimed yet.
         public var waitingLetters = 0
+        /// The state file a Shepherdr wrote there last, within a week.
+        public var state: Data?
 
         /// An agent is installed without the skill, such as Codex installed after the tools.
         public var lacksSkill: Bool { agents.contains { $0.isPresent && !$0.hasSkill } }
@@ -105,6 +107,14 @@ public enum AgentTools {
     waiting=0
     for letter in "$root"/outbox/*; do [ -d "$letter" ] && waiting=$((waiting + 1)); done
     echo "shepherdr-outbox $waiting"
+    newest=
+    for file in "$root"/state/*; do
+      [ -f "$file" ] || continue
+      if [ -z "$newest" ] || [ "$file" -nt "$newest" ]; then newest=$file; fi
+    done
+    if [ -n "$newest" ] && [ -n "$(find "$newest" -mtime -8 2>/dev/null)" ]; then
+      echo "shepherdr-state $(base64 <"$newest" | tr -d '\n')"
+    fi
     """
 
     /// Checks a machine for the Shepherdr with that instance ID.
@@ -137,6 +147,8 @@ public enum AgentTools {
                 check.agents.append(.init(name: parts[0], isPresent: parts[1] == "yes", hasSkill: parts[2] == "yes"))
             case "shepherdr-outbox":
                 check.waitingLetters = max(0, Int(value) ?? 0)
+            case "shepherdr-state":
+                check.state = Data(base64Encoded: value)
             default:
                 continue
             }
@@ -238,10 +250,28 @@ public enum AgentTools {
         }
     }
 
+    /// Writes this Shepherdr's state file on a machine that has the tools: `state/<instance>`.
+    public static func writeState(_ state: SessionStateFile, on machine: Machine) async throws {
+        let output = try await runScript(try stateScript(state), on: machine, action: "write the state on")
+        guard String(decoding: output.stdout, as: UTF8.self).contains("shepherdr-state-written") else {
+            throw HerdrFailure(.unreachable, "Could not write the state on \(machine.name).")
+        }
+    }
+
+    static func stateScript(_ state: SessionStateFile) throws -> String {
+        guard isInstance(state.instance) else { throw HerdrFailure(.incompatible, "This Shepherdr's instance ID is invalid.") }
+        let fence = "SHEPHERDR_END_\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
+        let contents = String(decoding: state.encoded(), as: UTF8.self)
+        guard !contents.contains(fence) else { throw HerdrFailure(.incompatible, "The state could not be packed for writing.") }
+        return "set -e\numask 077\nroot=\"$HOME/.shepherdr\"\nmkdir -p \"$root/state\"\n"
+            + file(contents, at: "$root/state/.state-$$", fence: fence)
+            + "mv \"$root/state/.state-$$\" \"$root/state/\(state.instance)\"\necho shepherdr-state-written\n"
+    }
+
     /// Removes the tools and their skills. Letters stay in `~/.shepherdr` until you delete it.
     static let uninstallScript = """
     root="$HOME/.shepherdr"
-    rm -rf "$root/bin" "$root/skills" "$root/VERSION" "$root/machines" "$root/lists" \\
+    rm -rf "$root/bin" "$root/skills" "$root/VERSION" "$root/machines" "$root/lists" "$root/state" \\
       "$HOME/.claude/skills/shepherdr" "${CODEX_HOME:-$HOME/.codex}/skills/shepherdr"
     echo shepherdr-removed
     """

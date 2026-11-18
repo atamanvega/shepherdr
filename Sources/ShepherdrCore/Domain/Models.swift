@@ -70,6 +70,9 @@ public struct Agent: Identifiable, Equatable, Sendable {
     public let project: String?
     public let summary: String?
     public let isLaunchPending: Bool
+    /// The agent's own conversation, such as `claude:<session ID>`, when Herdr's integration for it
+    /// reported one: Herdr resumes it from there after its server restarts.
+    public var conversation: String? = nil
 }
 
 /// The Git checkout a workspace works in, as Herdr reports it: the repository's main checkout or

@@ -207,7 +207,7 @@ final class BrowserTab: NSObject, Identifiable, WKNavigationDelegate, WKUIDelega
         load(pending)
     }
 
-    /// Web pages load as usual. Markdown files are rendered, and HTML files may read their folder.
+    /// Web pages load as usual. Markdown files are rendered, and other files may read their folder.
     func load(_ url: URL) {
         self.url = url
         pending = nil
@@ -218,6 +218,9 @@ final class BrowserTab: NSObject, Identifiable, WKNavigationDelegate, WKUIDelega
             // The base URL lets relative images and links resolve, and WebKit read that folder.
             webView.loadHTMLString(MarkdownRenderer.page(markdown: text, file: url), baseURL: url)
         case .html:
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        // WebKit reads other files, such as pictures, PDFs and text, only through loadFileURL.
+        case nil where url.isFileURL:
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         case nil:
             webView.load(URLRequest(url: url))
@@ -484,12 +487,18 @@ struct BrowserPanel: View {
         .help(help)
     }
 
-    /// Loads what was typed: a full URL, or a host such as `github.com/owner/repo`.
+    /// Loads what was typed: a full URL, a host such as `github.com/owner/repo`, or a file on this
+    /// Mac by its path or its `file://` URL.
     private func go() {
-        let text = address.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !text.contains(" ") else { return }
-        let candidate = text.contains("://") ? text : "https://\(text)"
-        guard let url = URL(string: candidate), url.host() != nil else { return }
+        guard let url = BrowserAddress.url(from: address) else { return }
+        if url.isFileURL {
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory),
+                  !isDirectory.boolValue else {
+                NSSound.beep()
+                return
+            }
+        }
         if ExternalLinks.contains(url) { BrowserTab.openOutside(url) }
         else if let tab = browser.selected { tab.load(url) } else { browser.open(url) }
         addressFocused = false
