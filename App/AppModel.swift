@@ -178,6 +178,9 @@ final class SessionWorkspace {
         browser.onChange = { [weak self] in self?.save() }
     }
 
+    /// Where it saves itself from now on, as when its session came back in a new terminal.
+    func save(to persist: @escaping (SessionStateStore.State) -> Void) { self.persist = persist }
+
     func collect(_ found: [SessionResource]) {
         let merged = SessionResources.merge(found, into: resources)
         guard merged != resources else { return }
@@ -347,8 +350,12 @@ final class AppModel {
     let courier = Courier()
     /// New releases of Shepherdr, and updating to them.
     let updates = UpdateController()
+    /// Machines whose Herdr should be updated.
+    let herdrUpdate = HerdrUpdateNotice()
     /// When you last looked at each session and at Compass, for ⌘T.
     let visits = VisitStore()
+    /// Each machine's sessions as last seen, to tell which come back in new terminals.
+    @ObservationIgnored let footprints = SessionFootprintStore()
     /// The quick switcher (⌘T), while it is open.
     var isSwitching = false
     /// What the quick switcher opens with typed in, such as a pull request to find its sessions.
@@ -422,11 +429,39 @@ final class AppModel {
 
     func workspace(for id: Agent.ID) -> SessionWorkspace {
         if let workspace = workspaces[id] { return workspace }
-        let workspace = SessionWorkspace(restoring: sessionStates.state(for: id)) { [weak self] state in
-            self?.sessionStates.set(state, for: id)
-        }
+        let workspace = SessionWorkspace(restoring: sessionStates.state(for: id), persist: persistence(for: id))
         workspaces[id] = workspace
         return workspace
+    }
+
+    private func persistence(for id: Agent.ID) -> (SessionStateStore.State) -> Void {
+        { [weak self] state in self?.sessionStates.set(state, for: id) }
+    }
+
+    /// Sessions that came back in new terminals, as when Herdr restarted on their machine and
+    /// restored them, keep what Shepherdr kept for them: holds, places in the queue and groups,
+    /// pages and links, mail, drafts. Runs after each refresh, before anything drops what belonged
+    /// to the old terminals as closed.
+    func carryOverSessions() {
+        let moves = footprints.observe(cluster.machines)
+        guard !moves.isEmpty else { return }
+        relations.rebind(moves)
+        order.rebind(moves)
+        sessionStates.rebind(moves)
+        visits.rebind(moves)
+        courier.rebind(moves)
+        for (old, new) in moves {
+            if let draft = drafts.removeValue(forKey: old), drafts[new] == nil { drafts[new] = draft }
+            if let list = history.removeValue(forKey: old), history[new] == nil { history[new] = list }
+            if let notice = sessionNotices.removeValue(forKey: old), sessionNotices[new] == nil { sessionNotices[new] = notice }
+            // Its splits came back in new terminals too.
+            focusedPanes[old] = nil
+            if let workspace = workspaces.removeValue(forKey: old), workspaces[new] == nil {
+                workspace.save(to: persistence(for: new))
+                workspaces[new] = workspace
+            }
+        }
+        if let id = selectedID, let new = moves[id] { selection = .session(new) }
     }
 
     /// Opens the session that was open when Shepherdr quit, once Herdr reports it; gives up once its

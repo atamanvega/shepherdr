@@ -82,6 +82,23 @@ public final class MailStore {
         save()
     }
 
+    /// Mail from and for sessions that came back in new terminals, as after their machine's Herdr
+    /// restarted, follows them there.
+    public func rebind(_ moves: [Agent.ID: Agent.ID]) {
+        var changed = false
+        for index in items.indices {
+            if let sender = items[index].sender, let new = moves[sender] {
+                items[index].sender = new
+                changed = true
+            }
+            if let recipient = items[index].recipient, let new = moves[recipient] {
+                items[index].recipient = new
+                changed = true
+            }
+        }
+        if changed { save() }
+    }
+
     public func item(_ id: String) -> MailItem? { items.first { $0.id == id } }
 
     /// A session's mail: what is for it, and what it sent that needs the user.

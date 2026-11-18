@@ -48,6 +48,19 @@ public final class SessionStateStore {
         save()
     }
 
+    /// Moves what was kept for sessions that came back in new terminals, as after their machine's
+    /// Herdr restarted, unless a new terminal has its own already.
+    public func rebind(_ moves: [Agent.ID: Agent.ID]) {
+        var changed = false
+        for (old, new) in moves {
+            guard let state = states.removeValue(forKey: old) else { continue }
+            changed = true
+            if states[new] == nil { states[new] = state }
+        }
+        if let last = lastSelection, let new = moves[last] { lastSelection = new }
+        if changed { save() }
+    }
+
     /// The session that was open when Shepherdr quit.
     public var lastSelection: Agent.ID? {
         get { defaults.data(forKey: Self.selectionKey).flatMap { try? JSONDecoder().decode(Agent.ID.self, from: $0) } }

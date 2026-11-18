@@ -174,6 +174,34 @@ public final class SessionRelationStore {
         onChange?()
     }
 
+    /// Moves holds to the terminals their sessions came back in, as after their machine's Herdr
+    /// restarted. Their tokens went with the old panes, so they're written again.
+    public func rebind(_ moves: [Agent.ID: Agent.ID]) {
+        guard !moves.isEmpty else { return }
+        func moved(_ id: Agent.ID) -> Agent.ID { moves[id] ?? id }
+        var rebound: [Agent.ID: [Hold]] = [:]
+        var touched = Set<Agent.ID>()
+        for waiter in holds.keys.sorted(by: Self.stableOrder) {
+            let list = holds[waiter] ?? []
+            let target = moved(waiter)
+            let kept = list.map { Hold(awaited: moved($0.awaited), phase: $0.phase) }
+            if target != waiter || kept != list { touched.insert(target) }
+            // A session found waiting in both terminals waits for each session once.
+            var merged = rebound[target] ?? []
+            for hold in kept where hold.awaited != target && !merged.contains(where: { $0.awaited == hold.awaited }) {
+                merged.append(hold)
+            }
+            rebound[target] = merged.isEmpty ? nil : merged
+        }
+        guard !touched.isEmpty else { return }
+        holds = rebound
+        collapsed = Set(collapsed.map(moved)).intersection(rebound.keys)
+        unsynced = Set(unsynced.map(moved)).union(touched)
+        saveUnsynced()
+        save()
+        onChange?()
+    }
+
     private func set(_ list: [Hold], for id: Agent.ID, synced: Bool = false) {
         holds[id] = list.isEmpty ? nil : list
         if list.isEmpty { collapsed.remove(id) }

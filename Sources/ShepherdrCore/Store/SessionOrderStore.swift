@@ -151,6 +151,25 @@ public final class SessionOrderStore {
         save()
     }
 
+    /// Puts sessions that came back in new terminals, as after their machine's Herdr restarted,
+    /// back where they were, in place of the entries their new terminals got at the end.
+    public func rebind(_ moves: [Agent.ID: Agent.ID]) {
+        guard !moves.isEmpty else { return }
+        func moved(_ id: Agent.ID) -> Agent.ID { moves[id] ?? id }
+        let rebound = Self.normalized(entries.map { entry in
+            switch entry {
+            case .session(let id):
+                return .session(moved(id))
+            case .group(var group):
+                group.members = group.members.map(moved)
+                return .group(group)
+            }
+        })
+        guard rebound != entries else { return }
+        entries = rebound
+        save()
+    }
+
     /// The queue as presented: current sessions numbered in priority order, inside their groups.
     /// Vanished sessions leave no gaps, groups remain when empty, and rows not yet synchronized
     /// follow in the caller's order. With `projects`, each session's project, the sessions of a

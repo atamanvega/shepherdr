@@ -35,6 +35,7 @@ struct MainView: View {
                     if model.mode == .compass { CompassSidebar(model: model, compass: model.compass) } else { SessionSidebar(model: model) }
                 }
                 .frame(maxHeight: .infinity)
+                HerdrUpdateBanner(model: model)
                 UpdateBanner(updates: model.updates)
             }
             .background(Theme.panel)
@@ -77,6 +78,7 @@ struct MainView: View {
         }
         .onChange(of: cluster.agents, initial: true) { model.notifier.observe(model.agents) }
         .onChange(of: cluster.lastRefresh, initial: true) {
+            model.carryOverSessions()
             model.restoreSelection()
             model.keepHolds()
             model.learnRepositories()

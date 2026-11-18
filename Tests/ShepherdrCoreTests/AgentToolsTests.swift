@@ -126,12 +126,39 @@ struct AgentToolsTests {
         #expect(try AgentTools.parseCheck(home.sh(["-c", AgentTools.checkScript]).out).version == nil)
     }
 
+    @Test func stateFilesAreWrittenWholeAndTheNewestIsRead() throws {
+        let home = try ScratchHome()
+        defer { home.remove() }
+        let session = SessionStateFile.Session(machine: "here", pane: "w1:p1", workspace: "planner", conversation: "claude:1")
+        let worker = SessionStateFile.Session(machine: "here", pane: "w2:p1", workspace: "worker", phase: .started)
+        let mine = SessionStateFile(instance: "0123456789ab", mac: "Studio", waits: [.init(session: session, waitsFor: [worker])])
+        #expect(try home.sh(["-s"], input: AgentTools.stateScript(mine)).out.contains("shepherdr-state-written"))
+        let state = home.url.appendingPathComponent(".shepherdr/state")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: state.path) == ["0123456789ab"])
+        let read = try AgentTools.parseCheck(home.sh(["-c", AgentTools.checkScript, "sh", "0123456789ab"]).out).state
+        #expect(try JSONDecoder().decode(SessionStateFile.self, from: try #require(read)) == mine)
+
+        // Another Shepherdr's, written later, is the one read; one older than a week, none.
+        let theirs = SessionStateFile(instance: "ba9876543210", mac: "Laptop", waits: [])
+        #expect(try home.sh(["-s"], input: AgentTools.stateScript(theirs)).status == 0)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-60)],
+                                              ofItemAtPath: state.appendingPathComponent("0123456789ab").path)
+        let newest = try AgentTools.parseCheck(home.sh(["-c", AgentTools.checkScript]).out).state
+        #expect(try JSONDecoder().decode(SessionStateFile.self, from: try #require(newest)) == theirs)
+        for file in ["0123456789ab", "ba9876543210"] {
+            try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-9 * 86_400)],
+                                                  ofItemAtPath: state.appendingPathComponent(file).path)
+        }
+        #expect(try AgentTools.parseCheck(home.sh(["-c", AgentTools.checkScript]).out).state == nil)
+        #expect(throws: HerdrFailure.self) { try AgentTools.stateScript(SessionStateFile(instance: "../x", mac: "", waits: [])) }
+    }
+
     /// Machines only update their tools when this Shepherdr's version is greater than theirs, so
     /// every change to the command or the skill needs a new `VERSION`. Each version keeps its
     /// fingerprint here: after bumping it, add the new one this test prints.
     @Test func changingTheToolsTakesANewVersion() throws {
         // 3, with `shepherdr run`, only reached test builds; 4 replaces it on their machines.
-        let fingerprints = [1: "421ecfaa5c879c75", 2: "6e89f6a3e43a9be2", 4: "7ced138f11461d6a", 5: "67acf304fec8b032", 6: "027e4c8846175811"]
+        let fingerprints = [1: "421ecfaa5c879c75", 2: "6e89f6a3e43a9be2", 4: "7ced138f11461d6a", 5: "67acf304fec8b032", 6: "027e4c8846175811", 7: "42055f0cd072c166"]
         let kit = try AgentTools.bundled()
         var hash = SHA256()
         for path in kit.files.keys.sorted() where path != "VERSION" {
@@ -264,12 +291,14 @@ struct LetterContractTests {
     @Test func everyKindOfLetterReadsBack() throws {
         let home = try installed()
         defer { home.remove() }
+        try "# Notes\n".write(to: home.url.appendingPathComponent("notes.md"), atomically: true, encoding: .utf8)
         let commands: [[String]] = [
             ["spawn", "--name", "api-fix", "--prompt", "Fix it"],
             ["wait-for", "reviewer", "test runner"],
             ["resume"],
             ["pin", "https://example.com/docs", "--title", "Docs \"v2\""],
             ["open", "http://localhost:3000"],
+            ["open", "notes.md"],
             ["notify", "Migration finished"],
             ["handoff", "--to", "planner@Studio", "Done"],
             ["close"],
@@ -289,6 +318,7 @@ struct LetterContractTests {
         #expect(letters.contains { $0.content == .resume([]) })
         #expect(letters.contains { $0.content == .pin(URL(string: "https://example.com/docs")!, title: "Docs \"v2\"") })
         #expect(letters.contains { $0.content == .open(URL(string: "http://localhost:3000")!) })
+        #expect(letters.contains { if case .openFile(copy: "files/notes.md", let path?) = $0.content { path.hasSuffix("/notes.md") } else { false } })
         #expect(letters.contains { $0.content == .notify && $0.message == "Migration finished\n" })
         #expect(letters.contains { $0.content == .handoff(to: "planner@Studio") })
         #expect(letters.contains { $0.content == .close([], force: false) })

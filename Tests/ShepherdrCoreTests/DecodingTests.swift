@@ -27,6 +27,15 @@ import Foundation
         #expect(snapshot.agents[1].name == "Codex" && snapshot.agents[1].program.glyph == ">_")
     }
 
+    @Test func agentConversationsComeFromHerdrsIntegrations() throws {
+        let snapshot = try Fixture.snapshot()
+        // Reported on the pane, or on the agent: either names the conversation Herdr resumes.
+        #expect(snapshot.agents[0].conversation == "claude:5f0c1a2b-claude")
+        #expect(snapshot.agents[1].conversation == "codex:019a-codex")
+        #expect(snapshot.agents[2].conversation == nil)
+        #expect(snapshot.panes.map(\.conversation) == ["claude:5f0c1a2b-claude", "codex:019a-codex", nil, nil, nil])
+    }
+
     @Test func eachAgentShowsItsOwnMark() {
         #expect(AgentProgram(label: " Claude ").name == "Claude Code")
         #expect(AgentProgram(label: "gemini").glyph == "✦")

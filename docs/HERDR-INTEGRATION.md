@@ -49,8 +49,8 @@ Queries run concurrently, each with a 12-second process deadline and an 8 MB out
 
 - Local is the default session. Remote profiles each identify one session.
 - No cluster event subscriptions; terminal windows do consume live CLI frame streams.
-- No persistence of cached session data across launches.
-- No server lifecycle management. Shepherdr creates workspaces, closes panes and changes saved machines only when you ask; enabled terminal input and resizing affect the selected existing terminal through Herdr's API. The [agent tools](AGENT-TOOLS.md) also prompt agents with the handoffs their sessions receive, and Compass starts, prompts and replaces its own agent in its own workspace.
+- Herdr's snapshots aren't kept across launches. What Shepherdr adds to them is: priorities, groups, holds, each session's tabs and resources, its mail, and each machine's [footprints](#restarts).
+- No server lifecycle management. Shepherdr never starts, stops or updates a Herdr server; **Settings → Agents** can set one up to start with the machine, at your request (see [Restarts](#restarts)). Shepherdr creates workspaces, closes panes and changes saved machines only when you ask; enabled terminal input and resizing affect the selected existing terminal through Herdr's API. The [agent tools](AGENT-TOOLS.md) also prompt agents with the handoffs their sessions receive, and Compass starts, prompts and replaces its own agent in its own workspace.
 - Actual multi-host SSH validation needs configured machines; automated tests exercise multiple synthetic machines and failures through the same store/client boundary.
 
 ## Existing terminals (0.2)
@@ -93,6 +93,43 @@ Checked on 2026-10-15 with Herdr 0.9.3 in disposable sessions. The [agent tools]
 - **Other machines.** All of these go through `--machine <profile>`, which Herdr forwards over its own SSH connection. Errors are JSON on stderr, `{"error":{"code":…,"message":…}}`.
 
 `Tests/AgentTools/herdr-live.sh` checks the command against a real Herdr in a server of its own, and CI runs it with Herdr from Homebrew.
+
+## Restarts
+
+Checked on 2026-11-03 with Herdr 0.9.3 in a server of its own, in a scratch home, with stand-in `claude` and `codex` scripts. Also read on 2026-11-03 from a Linux machine running Herdr 0.9.2 that rebooted, through its logs and session files, without changing anything there:
+
+- **What comes back.** Herdr keeps each session in `~/.config/herdr/session.json`, or `~/.config/herdr/sessions/<name>/session.json` for a named session, with up to 48 earlier copies in `session-snapshots/` beside it. That includes workspaces with their IDs and labels, tabs, layouts, and per pane its number, folder and `agent_session`. After `server stop` and a new `herdr server`, every workspace came back with the same workspace ID, label and pane IDs, such as `w1:p1`, in the same folders.
+- **What doesn't.** Terminals get new IDs: `term_65f5d69354ce71` came back as `term_65f5d6ad762711`. Tokens set with `pane report-metadata`, Shepherdr's included, are gone. Processes don't survive.
+- **Conversations.** `pane report-agent-session <pane> --source herdr:claude --agent claude --agent-session-id <id>` records a conversation, as Herdr's own integrations do from the agents' hooks. `api snapshot` reports it as `agent_session: {agent, kind: "id", source, value}` on the pane and on its agent, since Herdr 0.6.5. On restart, Herdr ran `claude --resume <id>` and `codex resume <id>` in those panes. Panes without one came back as shells.
+- **The rebooted machine.** All 40 workspaces came back. Of 36 agents, the 33 Claude Code sessions had a conversation recorded and resumed. Of the 3 Codex sessions, 2 had none and came back as shells; the third had a months-old conversation recorded.
+  - Codex 0.157 and later runs one shared server per machine, which runs its hooks with the environment of whichever pane started it, so Herdr's Codex integration reports conversations on the wrong pane or on none ([herdr#4649](https://github.com/herdrdev/herdr/issues/4649)).
+  - `codex features list` shows the setting as `daemon_auto_start`, and `codex features disable daemon_auto_start` turns it off in `~/.codex/config.toml`.
+- **Starting.** Nothing starts a server after a reboot: on that machine both servers were started by hand over SSH. A second `herdr server` for a session that has one exits with status 1 and `error: herdr server is already running`.
+- **Integrations.** `herdr integration status` works without a server and prints one line per agent: `claude: current (v10) (<path>)`, `codex: outdated (v3 < v8) (<path>)` or `codex: not installed (<path>)`. `herdr integration install claude|codex` needs the agent's folder, `~/.claude` or `~/.codex`, and fails without it.
+
+How Shepherdr uses this:
+
+- **Footprints.** For each machine, Shepherdr keeps the pane ID, workspace label and conversation of every terminal it last saw there (`sessionFootprints.v1`). When a machine that answers shows new terminals, it pairs them with the terminals that left:
+  - First by conversation, when exactly one terminal on each side has it.
+  - Then, only when none of the old terminals is left, which means Herdr restarted, by pane ID and workspace label.
+  - It moves holds, priorities, groups, tabs, resources, mail and drafts to the new terminal before anything drops the old one as closed. Its holds are written to Herdr again as tokens on the new panes.
+- **State files.** On machines with the agent tools, Shepherdr writes the holds of the sessions there to `~/.shepherdr/state/<instance ID>`, by footprint. See [AGENT-TOOLS](AGENT-TOOLS.md#state-files).
+- **Version.** `HerdrRelease.recommended`, 0.9.5, is the release Shepherdr asks for. Release notes read on 2026-11-06: 0.9.4 saves before a Mac shuts down, so agents' sessions survive its restart ([#4414](https://github.com/herdrdev/herdr/issues/4414)), and writes saves atomically; 0.9.5 shows Claude Code's questions as blocked in named sessions ([#4573](https://github.com/herdrdev/herdr/issues/4573)) and no longer installs Codex turn hooks. Shepherdr reads each server's version from `api snapshot` and offers the update in the sidebar while one is older. It never updates or restarts a server itself.
+- **Checks.** Along with the agent tools, Shepherdr asks each machine for a few things:
+  - its system;
+  - which of `~/.claude` and `~/.codex` exist;
+  - `herdr integration status`;
+  - whether `python3` is on the PATH;
+  - `codex features list`;
+  - the services that run `herdr … server`: systemd units in the user and system unit folders, with `systemctl is-enabled`, and launch agents in `~/Library/LaunchAgents` with `RunAtLoad`;
+  - on Linux, `loginctl show-user $(id -un) -p Linger`.
+
+  The server's version comes from the snapshot. Nothing is changed by a check.
+- **Fixes.** Each runs only when you press its button in **Settings → Agents**:
+  - `herdr integration install <agent>`.
+  - `codex features disable daemon_auto_start`.
+  - Starting with the machine. On Linux this writes `~/.config/systemd/user/herdr-<session>.service`, then runs `systemctl --user daemon-reload` and `systemctl --user enable` (not `--now`), then `loginctl enable-linger` if the user's services don't start at boot yet. On a Mac it writes `~/Library/LaunchAgents/com.theagilemonkeys.shepherdr.herdr-<session>.plist` with `RunAtLoad`, without loading it.
+  - The service runs `herdr server` by its full path, with `HERDR_SESSION` for a named session, and a `PATH` with the folders of `herdr`, `claude`, `codex`, `node` and `python3`.
 
 ## Compass (0.9)
 

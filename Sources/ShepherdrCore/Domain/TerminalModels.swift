@@ -9,6 +9,8 @@ public struct TerminalPane: Identifiable, Equatable, Sendable {
     public let title: String
     /// The pane's foreground working directory, else the one it started in.
     public let directory: String?
+    /// The conversation of the agent in the pane, as `Agent.conversation` has it.
+    public var conversation: String? = nil
     public var id: String { terminalID }
 }
 

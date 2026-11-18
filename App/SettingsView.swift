@@ -347,6 +347,7 @@ private struct AgentMachineRow: View {
             if let failure = courier.installFailures[id] {
                 Text(failure).font(.caption).foregroundStyle(.orange).padding(.leading, 26).textSelection(.enabled)
             }
+            restarts
             HStack(spacing: 16) {
                 if !state.machine.isLocal {
                     Toggle("Trust its letters", isOn: Binding { tools.trusted.contains(id) } set: { tools.setTrusted(id, $0) })
@@ -362,6 +363,59 @@ private struct AgentMachineRow: View {
             .toggleStyle(.checkbox).font(.caption).padding(.leading, 26)
         }
         .padding(.vertical, 2)
+    }
+
+    /// What a restart of the machine's Herdr server would cost, and what Shepherdr can do about it there.
+    @ViewBuilder private var restarts: some View {
+        let findings = courier.restartFindings(state)
+        if !findings.isEmpty {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("After a restart").font(.caption).fontWeight(.medium).foregroundStyle(.secondary)
+                ForEach(findings) { finding in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Image(systemName: finding.isReady ? "checkmark.circle" : "exclamationmark.triangle")
+                            .foregroundStyle(finding.isReady ? Color.green : Color.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(finding.text).fixedSize(horizontal: false, vertical: true)
+                            if let hint = finding.hint { Text(hint).foregroundStyle(.secondary).textSelection(.enabled) }
+                        }
+                        Spacer(minLength: 8)
+                        if let fix = finding.fix {
+                            Button(title(of: fix)) { courier.prepare(fix, on: id) }
+                                .disabled(state.connection != .online || courier.preparing.contains(id))
+                                .help(help(for: fix))
+                        }
+                    }
+                }
+                if courier.preparing.contains(id) {
+                    ProgressView().controlSize(.small)
+                } else if let note = courier.restartNotes[id] {
+                    Text(note).foregroundStyle(.orange).textSelection(.enabled)
+                }
+            }
+            .font(.caption).padding(.leading, 26).padding(.top, 2)
+        }
+    }
+
+    private func title(of fix: RestartFinding.Fix) -> String {
+        switch fix {
+        case .installIntegration: "Install Integration"
+        case .stopCodexSharedServer: "Turn Off"
+        case .startAtBoot: courier.restarts[id]?.isMac == true ? "Start at Login" : "Start with Machine"
+        }
+    }
+
+    private func help(for fix: RestartFinding.Fix) -> String {
+        switch fix {
+        case .installIntegration(let agent):
+            "Runs herdr integration install \(agent) there."
+        case .stopCodexSharedServer:
+            "Runs codex features disable daemon_auto_start there. Codex sessions already running keep the shared server until it stops."
+        case .startAtBoot(let session):
+            courier.restarts[id]?.isMac == true
+                ? "Adds a launch agent to ~/Library/LaunchAgents there that starts Herdr's \(session) session as you log in. Nothing starts now."
+                : "Adds and enables a systemd user service there, ~/.config/systemd/user/herdr-\(session).service, and lets systemd start it with the machine. Nothing starts now."
+        }
     }
 
     private var statusText: String {

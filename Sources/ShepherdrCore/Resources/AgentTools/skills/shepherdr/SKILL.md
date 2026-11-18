@@ -1,6 +1,6 @@
 ---
 name: shepherdr
-description: "Start agent sessions on this machine or on other machines in the user's Shepherdr network and wait for them; when the user asks, hand results back to the session coordinating you or close sessions; pin links or notify the user in Shepherdr. Use when the user asks to create, start or launch a session or agent on a machine or server by name, to hand off or report back to a coordinating session, to wait for another session, or to close a session, this one included. Requires HERDR_ENV=1."
+description: "Start agent sessions on this machine or on other machines in the user's Shepherdr network and wait for them; when the user asks, hand results back to the session coordinating you or close sessions; open pages and files in your session's browser in Shepherdr, pin links or notify the user. Use when the user asks to create, start or launch a session or agent on a machine or server by name, to hand off or report back to a coordinating session, to wait for another session, to close a session, this one included, or to open, show or preview a page or a file in Shepherdr or its browser. Requires HERDR_ENV=1. Whenever you mention a file, write its path relative to your working folder, such as src/api/cache.ts:42, never a bare file name or a shortened path: Shepherdr turns those paths into links."
 ---
 
 # Shepherdr
@@ -82,19 +82,30 @@ Close a session only when the user asks you to. Shepherdr then shows the user a 
 - With names, it asks to close those sessions, by agent or workspace name like `handoff --to`. Shepherdr doesn't ask about a session that is working or waiting for the user, and shows you why; add `--force` only when the user asked to close it anyway.
 - When the user asks you to hand off and close, run `handoff` first, then `close`.
 
-## Links and notices
+## Pages, files and notices
 
 ```bash
-~/.shepherdr/bin/shepherdr pin https://github.com/theam/api/pull/41 --title "Cache race fix"
 ~/.shepherdr/bin/shepherdr open http://localhost:3000
+~/.shepherdr/bin/shepherdr open coverage/index.html
+~/.shepherdr/bin/shepherdr pin https://github.com/theam/api/pull/41 --title "Cache race fix"
 ~/.shepherdr/bin/shepherdr notify "Migration finished: 1,204 rows moved."
 ```
 
+- `open` opens a page or a file in your session's browser in Shepherdr, beside your terminal. Use it when the user asks you to open, show or preview something there. It renders Markdown, and shows HTML, pictures, PDFs and text.
+  - On the user's Mac, the file itself opens, with the pictures and pages beside it.
+  - From another machine, Shepherdr opens a copy of the file, up to 5 MB, once the user lets it: files beside it don't come along. A page there only gets suggested, and `localhost` means the user's Mac, not this machine.
 - `pin` adds a link to your session's resources in Shepherdr.
-- `open` opens a page in your session's browser in Shepherdr. From another machine, it only suggests the page to the user.
 - `notify` shows the user a notification.
 
-Only http and https links are accepted.
+`pin` takes only http and https links; `open` takes those or a file's path.
+
+## Files you mention
+
+Shepherdr turns the file paths in your answers into links the user clicks to open the file. It finds a file only by the path you write, relative to your working folder:
+
+- Write `src/api/cache.ts` or `src/api/cache.ts:42`, never just `cache.ts` or a path cut short such as `…/cache.ts`.
+- For a file outside your working folder, write its absolute path, or one from `~`.
+- Write the path itself, not a Markdown link that shows other text.
 
 ## When something fails
 

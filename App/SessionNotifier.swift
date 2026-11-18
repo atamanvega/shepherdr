@@ -72,7 +72,7 @@ final class SessionNotifier: NSObject {
     }
 
     /// Tells you a letter from an agent waits for you: a handoff to approve or to address, a
-    /// session another machine asks for, or a page it suggests.
+    /// session another machine asks for, or a page or file it suggests.
     func mailArrived(_ item: MailItem, about session: Agent.ID?) {
         guard UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true,
               !(NSApp.isActive && session != nil && model?.selectedID == session) else { return }
@@ -80,7 +80,7 @@ final class SessionNotifier: NSObject {
         let title = switch item.kind {
         case .handoff, .prompt: "Handoff from \(sender)"
         case .spawnRequest: "\(sender) asks for a session on \(item.request?.machine ?? "another machine")"
-        case .openPage: "\(sender) suggests a page"
+        case .openPage: item.url?.isFileURL == true ? "\(sender) suggests a file" : "\(sender) suggests a page"
         case .close: "\(sender) asks to close \(item.addressedTo ?? "a session")"
         }
         let subtitle = switch item.status {
@@ -88,7 +88,8 @@ final class SessionNotifier: NSObject {
         case .needsRecipient: "Choose the session it goes to"
         default: ""
         }
-        let body = item.headline ?? item.url?.absoluteString ?? item.request.map { "In \($0.directory)" } ?? ""
+        let link = item.url.map { $0.isFileURL ? $0.lastPathComponent : $0.absoluteString }
+        let body = item.headline ?? link ?? item.request.map { "In \($0.directory)" } ?? ""
         post(title: title, subtitle: subtitle, body: body, thread: "mail", session: session)
     }
 

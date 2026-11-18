@@ -24,6 +24,7 @@ On each machine, the installer writes:
   VERSION, bin/, skills/      the kit
   lists/<instance>            this machine's list, one per Shepherdr that keeps it
   machines                    a copy of the last list written, for the command of version 5 and earlier
+  state/<instance>            who waits for whom among this machine's sessions, one file per Shepherdr
   outbox/<id>/                letters waiting for a Shepherdr to claim them, for up to a week
   outbox/.collected/<id>/     claimed letters, with claimed-by, cleared after a week
   inbox/<machine>/<id>/       on the Mac: letters Shepherdr collected, kept for a month or while mail needs them
@@ -46,6 +47,7 @@ shepherdr-system Linux x86_64
 shepherdr-agent claude yes yes     agent folder present, skill installed
 shepherdr-agent codex no no
 shepherdr-outbox 2                 letters no Shepherdr claimed yet
+shepherdr-state eyJpbnN0YW5jZSI…   the newest state file written within a week, in base64, if any
 ```
 
 It also touches that Shepherdr's list, which keeps it among the lists the command reads. Shepherdr checks each machine the first time it is online after launch, again when you open one of its sessions if the last check is ten minutes old, on every manual refresh, and every six hours. Waiting letters are collected on the same occasion. An agent folder without the skill gets it right away; an outdated kit is offered for updating, updated, or left alone, as **Settings → Agents → Updates** says.
@@ -63,6 +65,29 @@ Studio	shepherdr	-
 Routes are `here` (this machine), `direct` (its Herdr reaches the machine through the profile in the third column; only the Mac's list has these) and `shepherdr` (only Shepherdr reaches it, after the user approves). Names are one line, unique ignoring case; the Mac goes by its computer name or the one set in Settings. The revision is a hash of the lines, so Shepherdr compares it with the one the last check found and rewrites a list only when it changed. Disabled machines are left out, and a machine that doesn't share the list only gets its own line.
 
 Each Shepherdr has an instance ID, twelve hex digits made at random once, and writes its list to `lists/<instance>`, with a copy in `machines` for the command of version 5 and earlier, which reads only that. The command reads every list a check touched within a week, newest first, and then `machines`. It gives each name the best route any list gives it: `here`, then `direct`, then `shepherdr`. A list nobody touched in a week is a Shepherdr's that no longer runs, so it's left out.
+
+## State files
+
+Each Shepherdr writes the holds of the sessions on a machine to `state/<instance>` there, as JSON, whenever they change: `SessionStateFile`. Sessions go by their footprints, which outlast a restart of Herdr: machine (`here`, or a name from the machine lists), pane ID, workspace label and, when Herdr recorded one, the agent's conversation. Each session waited for also has the hold's phase:
+
+```json
+{
+  "instance" : "340f31d46dca",
+  "mac" : "Studio",
+  "version" : 1,
+  "waits" : [
+    {
+      "session" : { "conversation" : "claude:11111111-…", "machine" : "here", "pane" : "w1:p1", "workspace" : "planner" },
+      "waitsFor" : [
+        { "conversation" : "codex:22222222-…", "machine" : "here", "pane" : "w2:p1", "phase" : "started", "workspace" : "worker" },
+        { "machine" : "Studio", "pane" : "w4:p1", "phase" : "pending", "workspace" : "notes" }
+      ]
+    }
+  ]
+}
+```
+
+The file is written like a list: the script writes it beside its place, then moves it in. The check sends back the newest file written within a week. A Shepherdr reads it only for a machine it had seen no sessions of before it started, as after losing its settings or on a new Mac. It then takes the holds of waiting sessions it has no record of, matching each session to the terminals there by conversation, or by pane and workspace. Removing the tools removes `state`.
 
 ## Letters
 
@@ -90,13 +115,13 @@ A letter is `letter.json`, an optional `message.md`, and attachments in `files/`
 | `handoff` | `handoff` | `to`, `body`, `files` | Delivers it as a prompt to the sessions waiting for the sender, or to `to` |
 | `wait`, `resume` | `wait-for`, `resume` | `sessions` | Adds or removes holds |
 | `pin` | `pin` | `url`, `title` | Adds the link to the sender's resources |
-| `open` | `open` | `url` | Opens it in the sender's browser |
+| `open` | `open` | `url`, or `path` and `files` | Opens the page in the sender's browser. For a file, `files` holds its copy and `path` its absolute path on the machine: from the Mac the file itself opens, from another machine the copy |
 | `notify` | `notify` | `body` | Posts a notification |
 | `close` | `close` | `sessions`, `force` | Asks the user to close those sessions, or the sender's own when `sessions` is empty; **CLOSE** closes them with `pane close`, as **Close Session** does |
 
 `child.machine` is `here` or `profile:<Herdr profile ID>`; the latter only counts in the Mac's own letters. Names in `to` and `sessions` match a session's Herdr agent name, then its workspace name, ignoring case, preferring the sender's machine; `name@machine` picks the machine.
 
-`Letter(id:contents:)` checks everything again: the protocol version, that the ID matches the folder, IDs' and names' characters, lengths, http(s) links, attachment names (`files/` and `[A-Za-z0-9._-]`), that listed attachments came along, and the 256 KB message limit, which the command also enforces on messages and prompts. A letter that fails is set aside with a notice; nothing in a letter ever runs.
+`Letter(id:contents:)` checks everything again: the protocol version, that the ID matches the folder, IDs' and names' characters, lengths, http(s) links, that a file to open came with its one copy and an absolute path, attachment names (`files/` and `[A-Za-z0-9._-]`), that listed attachments came along, and the 256 KB message limit, which the command also enforces on messages and prompts. A letter that fails is set aside with a notice; nothing in a letter ever runs.
 
 ## Collecting
 
@@ -127,7 +152,7 @@ Shepherdr keeps each letter it reads in `~/.shepherdr/inbox/<machine>/<id>/` (fo
 
 `MailPlanner.plan` turns a letter into actions; `Courier` in the app carries them out. Handoffs and pending prompts are delivered with `herdr [--machine] agent prompt <pane> <text>` once the recipient's agent is idle or done, one at a time, at least 20 seconds apart per session. A recipient on this Mac also waits until `Readiness` allows its agent kind (see [Compass's runs](#runs)), and so does a session requested on this Mac, before `workspace create`; recipients and sessions on other machines don't wait for this Mac. Herdr refuses while the agent shows a question or isn't ready, and Shepherdr tries again on a later refresh. For a recipient on another machine, attachments are first copied to its `~/.cache/shepherdr/drops`, as dropped files are.
 
-Letters from the Mac apply on their own, except `close`. From another machine, anything whose text would reach a session on a different machine, requests for sessions and pages to open wait for the user, unless **Trust its letters** is on for that machine. Every `close`, from any machine, trusted or not, waits for the user's **CLOSE**. A handoff between sessions on the same remote machine crosses nothing and is delivered directly.
+Letters from the Mac apply on their own, except `close`. From another machine, anything whose text would reach a session on a different machine, requests for sessions and pages or files to open wait for the user, unless **Trust its letters** is on for that machine. Every `close`, from any machine, trusted or not, waits for the user's **CLOSE**. A handoff between sessions on the same remote machine crosses nothing and is delivered directly.
 
 Letting through something that waits unclaimed claims its letter first. Meanwhile, and for as long as its machine doesn't answer, the item is `confirming`: it says it waits for that machine, and the claim is tried again once the machine answers, at most every 30 seconds. It is never carried out unclaimed. If another Shepherdr claimed the letter first, the item goes, with a notice that names it. Discarding the last item of an unclaimed letter claims it too, so no other Shepherdr offers it.
 
@@ -139,6 +164,8 @@ Two tokens keep anything from happening twice, even after a restart:
 A `close` letter never asks about Compass's own agent, or a session on a machine that isn't answering. Without `force`, it doesn't ask about another session whose agent is working or needs the user: the sender's session shows why instead. Each session it names becomes a `close` item that needs approval, one per session. Once the user presses **CLOSE**, the sender's own session closes when its agent is idle or done, so the turn finishes, or right away for a shell with no agent; another session closes right away, and the session that asked is told it closed. Waiting for a turn to end lives in memory only.
 
 The skill keeps handoffs and closes for when the user asks: agents don't hand off or close on their own, don't ask the sessions they start to, and when the user asks for both, hand off first. Starting sessions always fans out: `spawn` puts its caller on hold for the new session, and the skill keeps `--no-wait` for when the user asks for a session that isn't linked.
+
+The skill also asks agents to write the files they mention as paths relative to their working folder, such as `src/api/cache.ts:42`, or absolute outside it, which is what Shepherdr's terminal turns into links (`TerminalPaths`, resolved against the session's folder). A skill's body only reaches an agent once it uses the skill, so that rule is in the skill's description too, which agents always see. It is a request, not a guarantee.
 
 **HANDOFF AND CLOSE** adds no letter kind. Once the session's agent is idle or done, `Courier` types `HandoffClose.prompt` into it with the same `agent prompt`, asking it to run `shepherdr handoff` without `--to`. `HandoffClose.outcome(of:)` then reads the actions planned for each letter collected. If a handoff from that session was filed for a session that waited for it, queued or waiting for approval, the message and files are on the Mac: Shepherdr closes the session with `pane close`, as **Close Session** does. A handoff filed for anyone else keeps the session open. So does a failed request, or no handoff within 15 minutes of asking while the agent isn't working. The pending close lives in memory only.
 

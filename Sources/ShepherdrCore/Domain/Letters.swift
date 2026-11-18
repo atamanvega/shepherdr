@@ -48,6 +48,9 @@ public struct Letter: Equatable, Sendable {
         case resume([String])
         case pin(URL, title: String?)
         case open(URL)
+        /// A file to open, by its copy in the letter, such as `files/report.html`, and its path on
+        /// the machine the letter came from.
+        case openFile(copy: String, path: String?)
         case notify
         /// Close these sessions; the sender's own when empty. `force` closes them even while their
         /// agent works or needs the user.
@@ -154,6 +157,11 @@ extension Letter {
             content = .resume(try (dto.sessions ?? []).map { try Self.text($0, "session", limit: 200) ?? "" }.filter { !$0.isEmpty })
         case "pin":
             content = .pin(try Self.link(dto.url), title: try Self.text(dto.title, "title", limit: 200))
+        case "open" where dto.url == nil:
+            guard listed.count == 1 else { throw LetterError("The letter brings no file to open.") }
+            let path = try Self.text(dto.path, "path", limit: 4_096)
+            guard path.map({ $0.hasPrefix("/") }) ?? true else { throw LetterError("The file's path isn't absolute.") }
+            content = .openFile(copy: listed[0], path: path)
         case "open":
             content = .open(try Self.link(dto.url))
         case "notify":
@@ -224,6 +232,7 @@ private struct LetterDTO: Decodable {
     let files: [String]?
     let sessions: [String]?
     let url: String?
+    let path: String?
     let title: String?
     let force: Bool?
 }

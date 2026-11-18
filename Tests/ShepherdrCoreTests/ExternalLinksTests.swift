@@ -27,3 +27,26 @@ struct ExternalLinksTests {
         #expect(!isExternal("file:///Users/me/slack.com/notes.md"))
     }
 }
+
+struct BrowserAddressTests {
+    private func address(_ text: String) -> String? { BrowserAddress.url(from: text, home: "/Users/me")?.absoluteString }
+
+    @Test func webAddressesGetTheirScheme() {
+        #expect(address("github.com/theam/shepherdr") == "https://github.com/theam/shepherdr")
+        #expect(address("  http://localhost:3000/a?b=c ") == "http://localhost:3000/a?b=c")
+        #expect(address("not an address") == nil)
+        #expect(address("") == nil)
+    }
+
+    @Test func filesOnThisMacOpenByPathOrFileURL() {
+        #expect(address("file:///Users/me/out/report.html") == "file:///Users/me/out/report.html")
+        #expect(address("file:///Users/me/My%20Notes/a.md") == "file:///Users/me/My%20Notes/a.md")
+        // Pasted with its spaces, or from localhost, or with a section.
+        #expect(address("file:///Users/me/My Notes/a.md") == "file:///Users/me/My%20Notes/a.md")
+        #expect(address("file://localhost/tmp/a.png") == "file:///tmp/a.png")
+        #expect(address("file:///Users/me/guide.html#install") == "file:///Users/me/guide.html#install")
+        #expect(address("/Users/me/My Notes/a.md") == "file:///Users/me/My%20Notes/a.md")
+        #expect(address("~/out/../report.pdf") == "file:///Users/me/report.pdf")
+        #expect(address("file://") == nil)
+    }
+}
