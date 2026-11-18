@@ -12,6 +12,7 @@ struct SessionScreen: View {
     @FocusState private var composing: Bool
     @State private var showsResources = false
     @AppStorage("terminalFontSize") private var fontSize = 11.0
+    @Environment(\.dismiss) private var dismiss
 
     /// The row as the queue shows it now, which may have gained or lost panes; Compass's agent is
     /// outside the queue.
@@ -65,6 +66,12 @@ struct SessionScreen: View {
                     Button("Smaller Text", systemImage: "textformat.size.smaller") { fontSize = max(7, fontSize - 1) }
                 } label: { Image(systemName: "textformat.size") }
             }
+        }
+        .onChange(of: client.queue) {
+            // In herd mode, a session you closed with `exit` takes you back to the game.
+            guard client.arcade.isPlaying, let queue = client.queue, !queue.rows.contains(where: { $0.session == link.session }),
+                  queue.compass?.agent?.session != link.session else { return }
+            dismiss()
         }
         .sheet(isPresented: $showsResources) { ResourcesSheet(title: row.title, resources: row.resources) }
         .alert("Shepherdr", isPresented: Binding(get: { client.notice != nil }, set: { if !$0 { client.notice = nil } })) {

@@ -27,6 +27,8 @@ final class RelayClient {
     /// The last Compass page the Mac sent.
     private(set) var compassPage: CompassPage?
     private(set) var macs: [PairedMac] = PairedMacs.load()
+    /// Herd mode's game, which follows the queue and what you type.
+    let arcade = Arcade()
 
     @ObservationIgnored private var socket: NWConnection?
     @ObservationIgnored private var receiving: Task<Void, Never>?
@@ -42,6 +44,7 @@ final class RelayClient {
 
     init() {
         mac = macs.last
+        arcade.isConnected = { [weak self] in self?.phase == .connected }
     }
 
     // MARK: Connecting
@@ -235,6 +238,7 @@ final class RelayClient {
             close()
         case .queue(let snapshot):
             queue = snapshot
+            arcade.observe(snapshot.rows)
         case .terminal(let channel, let state, let message):
             terminals[channel]?.update(state, message: message)
         case .reset(let channel):
@@ -304,6 +308,7 @@ final class RelayClient {
 
     func prompt(_ text: String, into pane: RemoteSessionID) {
         send(.prompt(pane: pane, text: text))
+        arcade.touch(pane, rows: queue?.rows)
     }
 
     // MARK: Compass
@@ -363,7 +368,10 @@ final class RemoteTerminal {
         client?.send(.attach(channel: channel, pane: pane, columns: size.columns, rows: size.rows))
     }
 
-    func input(_ bytes: Data) { client?.send(.input(channel: channel, bytes: bytes)) }
+    func input(_ bytes: Data) {
+        client?.send(.input(channel: channel, bytes: bytes))
+        client?.arcade.touch(pane, rows: client?.queue?.rows)
+    }
     func scroll(up: Bool, lines: Int) { client?.send(.scroll(channel: channel, up: up, lines: lines)) }
     func takeOver() { client?.send(.takeOver(channel: channel)) }
 }

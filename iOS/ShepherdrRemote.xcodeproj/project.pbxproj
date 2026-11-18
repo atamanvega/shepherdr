@@ -7,16 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03C0EC5BF562BAD2C4301F92 /* ArcadeSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F4B787B823D43BA37C0027 /* ArcadeSound.swift */; };
 		0CFC5284B0E7B13597B06E7B /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AEE76D18EE52DD8CED7D051 /* Dictation.swift */; };
 		15A73DF561058625AD70AB96 /* TerminalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DD75E8BCB752AC28E203EF1 /* TerminalPanel.swift */; };
 		34CB873329CB942628CE803A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B4391852A14490D136AD30 /* Theme.swift */; };
 		4CCBCB516608D7D330D6B11A /* PairedMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E832F1188A3DD0E9621F095 /* PairedMac.swift */; };
+		50E8834F51E5E2966671170D /* ArcadeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1674C2E4D8CBBE57534828C1 /* ArcadeView.swift */; };
 		5B2682798AFBCC4E60890764 /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F161F3D6A81C80B617478E /* PairView.swift */; };
 		604CE6146B19E9C2125949C4 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = DF18121A876F2128C0F63B20 /* Fonts */; };
+		6E54D0D2A5FED8D5B9348A56 /* Arcade.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3678E47B1324405CC5341E /* Arcade.swift */; };
 		7305D2CE2B358D052075FCB5 /* ShepherdrRemote in Frameworks */ = {isa = PBXBuildFile; productRef = E56540C032BA41552F95C7EC /* ShepherdrRemote */; };
 		7EA8BD5E4A0887E15FB3E109 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA512C765DA756FBB442810 /* QueueView.swift */; };
 		96C4A2DCC1FD1A555829D327 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = CDA35E74A2121E8C4626E423 /* SwiftTerm */; };
 		99D3E769384DB9D9ACB6045F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 19893BC369783677E607A44E /* Assets.xcassets */; };
+		A827CCF6A14D27EF51AD7933 /* PixelArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C08F249763193D524866A3B /* PixelArt.swift */; };
 		B373CCE03EEF5A50240FBAA4 /* SessionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07EE6BE8047C0180B534C6EB /* SessionScreen.swift */; };
 		C48CB27D38E2CC190C6EE471 /* RelayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04FBD67D8928CEAEA1DDDFF /* RelayClient.swift */; };
 		D1ABA342AAB3863CC0362F7E /* CompassScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C48121ECDC8D10BCA197301 /* CompassScreen.swift */; };
@@ -27,19 +31,23 @@
 		07EE6BE8047C0180B534C6EB /* SessionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionScreen.swift; sourceTree = "<group>"; };
 		0DD75E8BCB752AC28E203EF1 /* TerminalPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPanel.swift; sourceTree = "<group>"; };
 		0E832F1188A3DD0E9621F095 /* PairedMac.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedMac.swift; sourceTree = "<group>"; };
+		1674C2E4D8CBBE57534828C1 /* ArcadeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArcadeView.swift; sourceTree = "<group>"; };
 		19893BC369783677E607A44E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6C48121ECDC8D10BCA197301 /* CompassScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassScreen.swift; sourceTree = "<group>"; };
 		6DD9B0C6696CD81F99947973 /* ShepherdrRemote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ShepherdrRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6EA512C765DA756FBB442810 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
 		81F161F3D6A81C80B617478E /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		8AEE76D18EE52DD8CED7D051 /* Dictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dictation.swift; sourceTree = "<group>"; };
+		8C08F249763193D524866A3B /* PixelArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelArt.swift; sourceTree = "<group>"; };
 		93F2E609D661D535CDE96B2C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B46AE08702FCCEE9490FAACA /* ShepherdrRemoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShepherdrRemoteApp.swift; sourceTree = "<group>"; };
 		B5781F16CAD8250B1E89775C /* remote */ = {isa = PBXFileReference; lastKnownFileType = folder; name = remote; path = ..; sourceTree = SOURCE_ROOT; };
 		C5B4391852A14490D136AD30 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		CF3678E47B1324405CC5341E /* Arcade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Arcade.swift; sourceTree = "<group>"; };
 		D04FBD67D8928CEAEA1DDDFF /* RelayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayClient.swift; sourceTree = "<group>"; };
 		D12EE76B6AB78E6A9FCEB250 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		DF18121A876F2128C0F63B20 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = ../Sources/ShepherdrTerminalUI/Resources/Fonts; sourceTree = SOURCE_ROOT; };
+		F9F4B787B823D43BA37C0027 /* ArcadeSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArcadeSound.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,12 +107,16 @@
 		75EB1388AD888E217848AA3C /* ShepherdrRemote */ = {
 			isa = PBXGroup;
 			children = (
+				CF3678E47B1324405CC5341E /* Arcade.swift */,
+				F9F4B787B823D43BA37C0027 /* ArcadeSound.swift */,
+				1674C2E4D8CBBE57534828C1 /* ArcadeView.swift */,
 				19893BC369783677E607A44E /* Assets.xcassets */,
 				6C48121ECDC8D10BCA197301 /* CompassScreen.swift */,
 				8AEE76D18EE52DD8CED7D051 /* Dictation.swift */,
 				93F2E609D661D535CDE96B2C /* Info.plist */,
 				0E832F1188A3DD0E9621F095 /* PairedMac.swift */,
 				81F161F3D6A81C80B617478E /* PairView.swift */,
+				8C08F249763193D524866A3B /* PixelArt.swift */,
 				6EA512C765DA756FBB442810 /* QueueView.swift */,
 				D04FBD67D8928CEAEA1DDDFF /* RelayClient.swift */,
 				07EE6BE8047C0180B534C6EB /* SessionScreen.swift */,
@@ -220,10 +232,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6E54D0D2A5FED8D5B9348A56 /* Arcade.swift in Sources */,
+				03C0EC5BF562BAD2C4301F92 /* ArcadeSound.swift in Sources */,
+				50E8834F51E5E2966671170D /* ArcadeView.swift in Sources */,
 				D1ABA342AAB3863CC0362F7E /* CompassScreen.swift in Sources */,
 				0CFC5284B0E7B13597B06E7B /* Dictation.swift in Sources */,
 				5B2682798AFBCC4E60890764 /* PairView.swift in Sources */,
 				4CCBCB516608D7D330D6B11A /* PairedMac.swift in Sources */,
+				A827CCF6A14D27EF51AD7933 /* PixelArt.swift in Sources */,
 				7EA8BD5E4A0887E15FB3E109 /* QueueView.swift in Sources */,
 				C48CB27D38E2CC190C6EE471 /* RelayClient.swift in Sources */,
 				B373CCE03EEF5A50240FBAA4 /* SessionScreen.swift in Sources */,

@@ -1,5 +1,15 @@
 # Verification
 
+## Herd mode in Shepherdr Remote (unreleased)
+
+Validated on 2026-11-04 on macOS 26.6.2 with Xcode 27, Herdr 0.9.3 and the iOS 26 Simulator:
+
+- `swift test` and `swift test -c release`: **350 tests passed**, 14 of them new in `HerdTests`. They cover the order of the sessions astray, a split pane counting for its session, and scoring only what you touched, with touches spent and expiring. They also cover answering (also when the agent is done at once), combos and their window, closing a finished session and one that needed you, and sessions joining the strays. The rest are winning with its time bonus, a stale session that still counts as astray, the ten-minute game over, the clock held, giving up, a game surviving a relaunch, and the table's ranks, ties and initials.
+- **End to end, against Herdr:** a copy of the app's relay on `127.0.0.1` and a scratch Herdr server with six fake agents: two asking a question, one done, one idle and two working. A test client played the game as the phone does. `agent prompt` refused the agents with a question (`agent_blocked`), so the client attached their terminals and keyed `1`, which Herdr delivered. It prompted the done one and typed `exit` into the idle one, whose pane became a shell. The next snapshot scored all four in one go: answered 50 and 100 (×2), back to work 30 (×3), closed 400 (×4), then QUEUE CLEAR with 500 and a 300 time bonus, 1380 in all. An earlier run showed a session that finishes its turn joining the strays.
+- **In the Simulator:** the title screen with the art, the score bar, the rules and the table; a game under way with its countdown, the pasture with working sheep and the dog, and the strays grouped as needing you, done and idle, live from the copy's queue; QUEUE CLEAR with its tally and the initials; GAME OVER with TIME UP and the initials. The end screens came from a game given by launch argument.
+- The synthesizer's WAV, written to a file, read back as 16-bit mono at 22,050 Hz with the expected lengths.
+- **Not checked:** anything on a real iPhone (the sounds, haptics, taps, the arrows for initials, the popups over a session, going back to the game after `exit`), the clock stopping while the phone can't reach the Mac (only `hold(for:)` is tested), and `/exit` with a real Claude Code. Nobody taps in a headless Simulator.
+
 ## Shepherdr Remote and its relay (unreleased)
 
 Validated on 2026-11-01 on macOS 26.6.2 with Xcode 27 / Swift 6.4, Herdr 0.9.3 and the iOS 26 Simulator:

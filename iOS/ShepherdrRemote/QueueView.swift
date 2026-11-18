@@ -7,11 +7,31 @@ struct QueueView: View {
     @Bindable var client: RelayClient
     @State private var showsSettings = false
     @State private var query = ""
+    @AppStorage(Arcade.modeKey) private var herdMode = false
 
     /// The same margin for the header and every row.
     static let insets = EdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 10)
 
     var body: some View {
+        Group {
+            if herdMode {
+                ArcadeView(client: client, onQueue: { herdMode = false }, onSettings: { showsSettings = true })
+            } else {
+                list
+            }
+        }
+        .background(Theme.background)
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationDestination(for: SessionLink.self) { link in
+            SessionScreen(client: client, link: link)
+        }
+        .navigationDestination(for: CompassLink.self) { _ in
+            CompassScreen(client: client)
+        }
+        .sheet(isPresented: $showsSettings) { SettingsSheet(client: client) }
+    }
+
+    private var list: some View {
         List {
             header
                 .listRowInsets(EdgeInsets(top: 4, leading: Self.insets.leading, bottom: 8, trailing: Self.insets.trailing))
@@ -56,15 +76,6 @@ struct QueueView: View {
         .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
-        .background(Theme.background)
-        .toolbar(.hidden, for: .navigationBar)
-        .navigationDestination(for: SessionLink.self) { link in
-            SessionScreen(client: client, link: link)
-        }
-        .navigationDestination(for: CompassLink.self) { _ in
-            CompassScreen(client: client)
-        }
-        .sheet(isPresented: $showsSettings) { SettingsSheet(client: client) }
         .refreshable { client.start() }
     }
 
@@ -73,6 +84,15 @@ struct QueueView: View {
             HStack {
                 Text("SHEPHERDR").font(Theme.mono(13, .semibold)).foregroundStyle(Theme.phosphor).tracking(3)
                 Spacer()
+                Button {
+                    herdMode = true
+                    client.arcade.play(.coin)
+                } label: {
+                    Image(systemName: "gamecontroller").font(.system(size: 17)).foregroundStyle(client.arcade.isPlaying ? Theme.amber : Theme.dim)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Herd Mode")
+                .padding(.trailing, 10)
                 Button { showsSettings = true } label: {
                     Image(systemName: "gearshape").font(.system(size: 17)).foregroundStyle(Theme.dim)
                 }

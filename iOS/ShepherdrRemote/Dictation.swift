@@ -28,6 +28,8 @@ final class Dictation {
     @ObservationIgnored private var results: Task<Void, Never>?
 
     var isRecording: Bool { state == .recording }
+    /// Whether any dictation has the microphone, so that herd mode's sounds wait.
+    private(set) static var isListening = false
 
     func start() async {
         guard state == .idle || isFailed else { return }
@@ -115,6 +117,7 @@ final class Dictation {
         engine.prepare()
         try engine.start()
         self.engine = engine
+        Self.isListening = true
     }
 
     /// The tap runs on the audio thread. A closure written in this main-actor class would be
@@ -127,6 +130,7 @@ final class Dictation {
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
+        Self.isListening = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }

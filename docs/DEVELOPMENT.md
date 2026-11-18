@@ -74,7 +74,7 @@ App/                              SwiftUI presentation: queue sidebar, work area
   CompassViews.swift              The mode tabs, Compass's column and work area, and its welcome screen
   ReadinessMonitor.swift          Sleep, dark wakes and the network, for agents Shepherdr starts or prompts unattended
   GitHubInbox*.swift              The overview's GitHub inbox: its sync with GitHub, its columns and suggested order
-Sources/ShepherdrRemote/           The relay's wire protocol, shared with the iOS app: messages, binary frames, pairing links, fingerprints
+Sources/ShepherdrRemote/           The relay's wire protocol, shared with the iOS app: messages, binary frames, pairing links, fingerprints; herd mode's rules
 Sources/ShepherdrCore/
   Remote/                         The relay's TLS identity (a self-signed P-256 certificate in DER), its WebSocket server and the paired phones
   Transport/                      CLI adapters, executable discovery, bounded process/stream transports, agent tools and mailbox, Compass's folder and Git
@@ -89,7 +89,7 @@ Sources/ShepherdrDictation/        On-device dictation: microphone capture and P
 Sources/ShepherdrProbe/            Read-only integration diagnostic
 Tests/ShepherdrCoreTests/          Protocol, transport and store regression tests
 Tests/AgentTools/                  The agent tools' command line, against a fake herdr and a real one
-iOS/                               Shepherdr Remote, the iPhone app: XcodeGen project, SwiftUI views, SwiftTerm's UIKit terminal, dictation
+iOS/                               Shepherdr Remote, the iPhone app: XcodeGen project, SwiftUI views, SwiftTerm's UIKit terminal, dictation, herd mode
 scripts/make-artwork.sh            Regenerates the icon, README header and social preview (see Artwork)
 scripts/pixelate.swift             Turns art into strict pixel art in App/Theme.swift's palette
 scripts/make-icon.swift            Renders App/Assets.xcassets/AppIcon.appiconset from docs/assets/icon.png
@@ -129,6 +129,8 @@ xcrun devicectl device install app --device <UDID> "build-ios/Build/Products/Deb
 
 **What the phone gets.** Every second, when it changed, a `QueueSnapshot`: the rows `remoteQueue()` builds in the sidebar's order, each with its group and project lines (`inGroup`, `inProject`), its place in a tree of holds (`QueueTree`, from `WaitForest`), its panes and its resources (`remoteResources(for:)`, ten of each kind, with the state and checks `status(of:)` gives Compass's page too), and Compass's status (`RemoteCompass`, in the words of its column). A row from a Mac that sends none of these still reads. Compass pages travel only on request, `compassPage(day:)`, which reads only a file named like a day. `compassRun` and `compassCancel` do what the column's buttons do, and typing to Compass's agent from the phone holds its runs back as typing on the Mac does. Searching runs on the phone (`QueueSearch`).
 
+**Herd mode.** Its rules are in the package, so `swift test` covers them (`HerdTests`). `Herd.strays(in:)` orders the sessions astray. `HerdGame` keeps each session's last status, and what you touched from the phone and when. It turns each snapshot into events with their points: back to work, answered, closed, astray, cleared. It also counts down ten minutes from your last action, and `hold(for:)` stops that clock. A session whose machine stops answering keeps the status it had, so it can't win the game by going stale. `HerdScores` keeps the ten best. On the phone, `Arcade` feeds the game the queue's snapshots and the touches `RelayClient` reports for `prompt` and terminal input. It ticks the clock every second, holding it while the phone, in front, can't reach the Mac. It keeps everything in user defaults (`herdGame`, `herdPlaced`, `herdScores`, `herdInitials`, plus `herdMode` and `herdSound` for the view). The pixel art is drawn in code: `PixelFont` is a 5×7 font, and `Flock` holds the sheep and the dog. The title art and the dog's portrait are `docs/assets/header.png` and `icon.png`, in the asset catalog. The sounds are synthesized as WAV in memory (`Synth`: square and triangle waves, slides, vibrato) and played with `AVAudioPlayer` in the ambient category, never while `Dictation.isListening`.
+
 The relay logs each connection under the subsystem `com.theagilemonkeys.Shepherdr`, category `relay`: `log stream --predicate 'category == "relay"' --level info`.
 
 **Testing with the Simulator.** The Simulator shares the Mac's network, so it can reach a relay on `127.0.0.1` without exposing anything:
@@ -136,7 +138,7 @@ The relay logs each connection under the subsystem `com.theagilemonkeys.Shepherd
 - Start a Herdr server of its own in a scratch home, as in [the agent tools' live test](../Tests/AgentTools/herdr-live.sh), with fake agents that report themselves with `herdr pane report-agent`.
 - Run a copy of the app with a bundle identifier of its own and `CFFIXED_USER_HOME` pointing at the scratch home, which moves `NSHomeDirectory()`, `~` and the caches there. It has no default keychain there, so make one first with `CFFIXED_USER_HOME=<home> security create-keychain -p <password> <home>/Library/Keychains/login.keychain-db`.
 - Pass the settings as arguments: `open -g -n --env CFFIXED_USER_HOME=<home> --env HOME=<home> --env SHEPHERDR_HERDR_PATH=<wrapper> <copy>.app --args -remoteEnabled YES -remotePort 18437 -remoteLoopbackForTesting YES -notifySessions NO`. `remoteLoopbackForTesting`, which isn't in Settings, listens on `127.0.0.1` without asking Tailscale for anything and writes the pairing link to `~/.shepherdr/remote-invite.txt`.
-- Launch the app with `xcrun simctl launch <device> com.theagilemonkeys.ShepherdrRemote.dev -pairInvite "<link>"` to pair, and later with `-openSession <machine>/<terminal>` to open a session or `-openCompass YES` to open Compass, since nobody taps in a headless Simulator. `-pairInvite` only pairs an app that has no Mac yet: `xcrun simctl uninstall` it to start over.
+- Launch the app with `xcrun simctl launch <device> com.theagilemonkeys.ShepherdrRemote.dev -pairInvite "<link>"` to pair, and later with `-openSession <machine>/<terminal>` to open a session, `-openCompass YES` to open Compass, or `-herdMode YES -herdStart YES` to start a game of herd mode, since nobody taps in a headless Simulator. `-herdGame '<hex>'` gives the app a game as JSON, in hex, such as a finished one, to see its end screens. `-pairInvite` only pairs an app that has no Mac yet: `xcrun simctl uninstall` it to start over.
 - Groups, holds and resources live in the copy's user defaults (`sessionOrder.v2`, `sessionWaits.v1`, `sessionState.v1`, all JSON). Quit the copy, edit them with `defaults export` and `defaults import`, and open it again. A folder at `~/.shepherdr/compass` with a `compass.json` of `{"enabled": false}` and pages in `days/` gives it a Compass that never starts an agent.
 
 `RelayServerTests` run a real TLS WebSocket on loopback with the identity in a temporary keychain, a client pinning the right fingerprint and one pinning another.
@@ -146,8 +148,7 @@ The relay logs each connection under the subsystem `com.theagilemonkeys.Shepherd
 The app icon, the README header and the social preview are strict pixel art: every art pixel is a square of the same size, in a color from `App/Theme.swift`. `scripts/pixelate.swift` reads every hex color in that file, divides an image into a grid, averages each cell in linear light and picks the theme color nearest in CIE L\*a\*b\*. `Theme.artworkShades` adds in-between shades that only the artwork uses.
 
 ```sh
-bash iOS/                               Shepherdr Remote, the iPhone app: XcodeGen project, SwiftUI views, SwiftTerm's UIKit terminal, dictation
-scripts/make-artwork.sh
+bash scripts/make-artwork.sh
 ```
 
 regenerates everything from `docs/assets/source`:

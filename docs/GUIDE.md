@@ -26,7 +26,7 @@ A bilingual (English/Spanish) quick guide with the same content comes with the a
 - **Sessions on hold:** mark a session as waiting for others, such as a planner waiting for the subagents it launched. It shows an hourglass until they finish, and the sessions it waits for are listed under it, in a tree you can collapse.
 - **Compass:** the window's first mode, before Agents (**⌥⌘1** and **⌥⌘2**), with a page of your day kept by an agent of its own on this Mac. It starts by summing up your sessions; ask it in its terminal to cover more, such as your calendar or mail. It updates on the schedule you choose, keeps every day's page and a copy per run in `~/.shepherdr/compass`, commits them to Git and can push them to a private repository. Buttons on the page start the sessions it suggests, once you check them in New Session.
 - **Agents that coordinate:** Shepherdr installs a small `shepherdr` command and a skill for Claude Code and Codex on each machine, Linux included. An agent asked to "start a session on buildbox" starts it there, nested under its own session, which goes on hold until the new one finishes: starting sessions always fans out. When you ask the new session to hand its result back, it does with `shepherdr handoff`, and Shepherdr delivers it as a prompt once the coordinator is free. Machines never connect to your Mac: Shepherdr collects what agents leave for it.
-- **Shepherdr Remote on iPhone:** turn on the relay in **Settings → Remote** and pair your iPhone with a QR code. The phone shows this Mac's queue and the terminal of any session on any of your machines, fitted to its screen, and sends prompts you type or dictate. It reaches your Mac through Tailscale, over TLS, never over SSH. See [Shepherdr Remote](#shepherdr-remote-on-iphone).
+- **Shepherdr Remote on iPhone:** turn on the relay in **Settings → Remote** and pair your iPhone with a QR code. The phone shows this Mac's queue and the terminal of any session on any of your machines, fitted to its screen, and sends prompts you type or dictate. It reaches your Mac through Tailscale, over TLS, never over SSH. Its herd mode turns unblocking your sessions into an arcade game. See [Shepherdr Remote](#shepherdr-remote-on-iphone).
 - **Create and close sessions:** **⌘N** creates a Herdr workspace with a shell in a folder; start Claude Code, Codex or any other supported agent in it and it joins the queue. Create one in a group with its **+**, or next to a session with **New Session in Same Folder…** (**⇧⌘N**). **Close Session…** in a session's context menu ends its pane after confirmation. **Rename…** renames its Herdr workspace.
 - **Overview:** how many sessions need you, are working, done or idle, and a card per machine with its sessions and its processor, memory and disk use. Click states and machines to list the sessions in any combination of them. Plain shell panes are listed separately.
 - **GitHub inbox:** the overview's **GITHUB** tab lists what the repositories you follow ask of you: pull requests awaiting your review, issues assigned to you and your own open pull requests, with their checks and the pull requests linked to each issue. **SUGGEST ORDER** lists the pull requests in the order to take them on.
@@ -378,6 +378,21 @@ Click **Pair iPhone…**. A QR code shows, good once and for five minutes. In Sh
 - **While the phone shows a pane, it drives it** at the phone's size. If this Mac had it open, it lets go and says so; **RECONNECT** on the Mac takes it back. If another client controls it, such as Herdr's own, the phone watches, and **TAKE OVER** is your call.
 - **The composer** sends a prompt as Shepherdr's prompt editor does: pasted, then Return. The microphone dictates it on the iPhone, with Apple's on-device speech recognition; choose its language in the app's settings. The first time, iOS may download that language.
 - iOS suspends apps in the background, so the app lets go of the Mac and connects again when you come back. It doesn't notify you while it's closed.
+
+### Herd mode
+
+The gamepad button at the top of the queue turns it into an arcade game; **QUEUE** goes back to the list. The sessions that stopped are sheep astray: those that need you first, then the done ones, then the idle ones, each in the queue's order. The ones working graze in the pasture at the top, with Shepherdr's dog behind them, and the ones on hold are left out, as they carry on by themselves. Shells don't play.
+
+- **PRESS START** starts a game with the queue as it is. The goal is to leave no session astray: get each one working again, or close it. Only what you do from this iPhone scores:
+  - **10** when a done or idle session works again after your prompt;
+  - **50** when a session that needed you moves on after you answer it, with the keys row or in its terminal;
+  - **100** when you close a finished session by leaving its agent from its terminal, such as with `/exit`. Closing one that still needed you clears it but scores nothing.
+- **Combos.** Scoring again within 90 seconds multiplies the points by 2, then 3, up to 5.
+- **Queue clear.** The moment no session is astray, every one working, on hold or closed, you win: 500 points, plus 10 for each minute under half an hour the game took.
+- **Game over.** The clock gives you ten minutes, and each answer, prompt or key you send to a session astray starts it again. When it runs out, the game is over. **GIVE UP** ends it too. The clock stops while the app, open, can't reach your Mac; it doesn't stop while the app is in the background.
+- **High scores.** A score among the ten best, won or lost, asks for your initials, arcade style: ▲ and ▼ change a letter, and **OK** puts them in the table. The table and a game under way stay on the iPhone, even if the app quits.
+- The points pop up over whatever you look at. A session you close while you look at it takes you back to the game, and a game that ends shows how it went.
+- The sounds are 8-bit, made on the phone. They follow the silent switch and wait while you dictate, and the speaker button mutes them.
 
 ## Compass
 
