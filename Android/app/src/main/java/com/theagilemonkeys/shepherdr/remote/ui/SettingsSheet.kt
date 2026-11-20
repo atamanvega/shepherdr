@@ -2,6 +2,9 @@ package com.theagilemonkeys.shepherdr.remote.ui
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +47,7 @@ fun SettingsSheet(client: RelayClient, onDismiss: () -> Unit) {
     val prefs = remember { context.getSharedPreferences("shepherdr", Context.MODE_PRIVATE) }
     var locale by remember { mutableStateOf(prefs.getString(Dictation.LOCALE_KEY, "") ?: "") }
     var pairing by remember { mutableStateOf(false) }
+    var showsLicenses by remember { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Theme.panel) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
@@ -92,11 +96,46 @@ fun SettingsSheet(client: RelayClient, onDismiss: () -> Unit) {
                     "You may need to download the language in the phone's speech settings first.",
                 style = Theme.mono(11f), color = Theme.dim, modifier = Modifier.padding(top = 6.dp),
             )
+            SectionTitle("About")
+            val version = remember {
+                runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
+            }
+            Text("Shepherdr Remote $version", style = Theme.mono(13f), color = Theme.text)
+            TextButton(onClick = { showsLicenses = true }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                Text("Licenses", color = Theme.phosphor)
+            }
+        }
+    }
+    if (showsLicenses) {
+        Dialog(onDismissRequest = { showsLicenses = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Licenses(onDone = { showsLicenses = false })
         }
     }
     if (pairing) {
         Dialog(onDismissRequest = { pairing = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             PairScreen(client, onPaired = { pairing = false; onDismiss() })
         }
+    }
+}
+
+/** What the app is built on, and the licenses it ships under. */
+@Composable
+private fun Licenses(onDone: () -> Unit) {
+    val context = LocalContext.current
+    val text = remember {
+        listOf("NOTICE.txt", "Apache-2.0.txt", "FiraCode-OFL.txt").joinToString("\n\n────────\n\n") { name ->
+            runCatching { context.assets.open("licenses/$name").bufferedReader().use { it.readText() } }.getOrDefault("")
+        }
+    }
+    Column(Modifier.fillMaxSize().background(Theme.background).statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Licenses", style = Theme.mono(16f, FontWeight.SemiBold), color = Theme.text)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDone) { Text("Done", color = Theme.phosphor) }
+        }
+        Text(
+            text, style = Theme.mono(10.5f), color = Theme.dim,
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+        )
     }
 }

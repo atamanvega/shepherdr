@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,13 +20,40 @@ android {
         versionName = "1.0"
     }
 
+    // The upload key signs release builds for Google Play, which signs them again with the app's
+    // own key. Its path and passwords go in Android/keystore.properties, which git ignores:
+    //
+    //     storeFile=/path/to/upload.jks
+    //     storePassword=…
+    //     keyAlias=upload
+    //     keyPassword=…
+    //
+    // Without it, release builds come out unsigned.
+    val keystore = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { file ->
+        Properties().apply { file.inputStream().use { load(it) } }
+    }
+    signingConfigs {
+        if (keystore != null) {
+            create("upload") {
+                storeFile = file(keystore.getProperty("storeFile"))
+                storePassword = keystore.getProperty("storePassword")
+                keyAlias = keystore.getProperty("keyAlias")
+                keyPassword = keystore.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "Shepherdr dev")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("upload")
+            resValue("string", "app_name", "Shepherdr")
         }
     }
 
@@ -56,8 +85,14 @@ val sharedResources = tasks.register<Sync>("sharedResources") {
     from(assets.resolve("ArcadeDog.imageset/icon.png")) { rename { "arcade_dog.png" }; into("drawable-nodpi") }
     from(assets.resolve("ArcadeTitle.imageset/header.png")) { rename { "arcade_title.png" }; into("drawable-nodpi") }
 }
+// Fira Code's license ships in the app, as it does in the Mac's.
+val sharedAssets = tasks.register<Sync>("sharedAssets") {
+    into(layout.buildDirectory.dir("generated/shared-assets"))
+    from(repository.resolve("Sources/ShepherdrTerminalUI/Resources/Fonts/FiraCode-OFL.txt")) { into("licenses") }
+}
 android.sourceSets["main"].res.srcDir(sharedResources.map { it.destinationDir })
-tasks.named("preBuild") { dependsOn(sharedResources) }
+android.sourceSets["main"].assets.srcDir(sharedAssets.map { it.destinationDir })
+tasks.named("preBuild") { dependsOn(sharedResources, sharedAssets) }
 
 kotlin {
     compilerOptions {
