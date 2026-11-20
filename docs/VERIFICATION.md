@@ -1,5 +1,14 @@
 # Verification
 
+## Shepherdr Remote for Android (unreleased)
+
+Validated on 2026-11-20 on macOS 26 with JDK 21, Gradle 8.14.3 and AGP 8.13, against the Android 16 emulator (arm64):
+
+- `./gradlew :app:testDebugUnitTest`: **25 tests passed**. `RemoteProtocolTest` encodes every client message and decodes every server message against `golden-protocol.txt`, which `Android/scripts/golden-protocol.sh` makes with the Mac's own `Sources/ShepherdrRemote`, and covers rows without lines or resources, search, frames, pairing and session links, fingerprints and tokens. `HerdTest` is the Mac's `HerdTests`, ported one by one.
+- **End to end, in the emulator, against a stand-in relay:** a Swift program built on `Sources/ShepherdrRemote` with the relay's own stack (`NWListener`, TLS 1.3, `NWProtocolWebSocket`), a self-signed P-256 certificate from OpenSSL and a made-up queue. Paired by a launch extra with `10.0.2.2`; the phone pinned the certificate and the relay read `pair`. After a reinstall, the phone said `hello` with the token it kept. The queue showed groups, a project, the tree of a hold, pull requests with checks, machines and Compass. A session opened with its two panes as tabs, attached at the phone's size (62×47) and resized as the keyboard opened; typed keys reached the relay as bytes, swiping sent `scroll` requests, and the composer sent `prompt`. Compass showed its page and status. Herd mode started by a launch extra, and a prompt to an idle session scored +10 with its popup over the session.
+- Found and fixed on the way: the terminal's `drawColor` painted over the session's bar, since a view inside Compose draws on a canvas that reaches beyond it; it now fills only its own rectangle.
+- Not verified: the real Mac app and a real Herdr (only the stand-in relay), a real phone over Tailscale, the QR scanner (it needs Google Play services and a camera), dictation, the sounds and haptics, and links opening in the browser.
+
 ## Opening files from agents, the address field, New Session and the Herdr update offer (unreleased)
 
 Validated on 2026-11-06 on macOS 26.6.2 with Xcode 27 / Swift 6.4 and Herdr 0.9.3:
