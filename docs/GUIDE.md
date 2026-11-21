@@ -393,7 +393,15 @@ When you let something through, Shepherdr first takes the letter on the machine 
 
 Shepherdr Remote is an iPhone and Android app for this Mac's Shepherdr: the queue, the terminal of every session on every machine the Mac sees, and the prompt composer, with dictation. It talks to Shepherdr on your Mac and nothing else. The Mac already reaches your machines, so the phone needs no SSH access to any of them, nor the Mac to accept SSH.
 
-It is not on the App Store or Google Play yet: build it from this repository, with Xcode for iPhone (see [DEVELOPMENT](DEVELOPMENT.md#shepherdr-remote-ios)) or Gradle for Android (see [DEVELOPMENT](DEVELOPMENT.md#shepherdr-remote-android)). It needs iOS 26 or later, or Android 10 or later, and Tailscale on the phone and on the Mac. Both apps do the same, and this section says where they differ. On an Android phone with a work profile, Tailscale and Shepherdr Remote must be in the same profile: Android's VPNs only carry their own profile's apps. If your work account can't sign in to Tailscale in the personal profile, add the phone to your tailnet there with an auth key (Tailscale's admin console → Settings → Keys, then in the app ⋮ → **Use an auth key**).
+It is not on the App Store or Google Play yet, so you build it from this repository. Both apps do the same, and this section says where they differ.
+
+### Set up your phone
+
+1. **Tailscale** on the Mac and on the phone, signed in to the same account. That is how the phone reaches your Mac, at home or away.
+2. **The app.** On iPhone (iOS 26 or later), build it with Xcode: see [DEVELOPMENT](DEVELOPMENT.md#shepherdr-remote-ios). On Android (10 or later), build the APK with Gradle, as [DEVELOPMENT](DEVELOPMENT.md#shepherdr-remote-android) explains, or install one a teammate shares: open the `.apk` on the phone and let the browser or Files install unknown apps.
+3. **On an Android phone with a work profile**, the apps with a briefcase, put Tailscale and Shepherdr Remote in the same profile: Android's VPNs only carry their own profile's apps, so the app times out while Tailscale says it's connected. If your work account can't sign in to Tailscale in the personal profile, add the phone with an auth key instead: create one in Tailscale's admin console under **Settings → Keys**, then in the app open **Settings → Accounts → ⋮ → Use an auth key**. The key only adds the phone; to keep it in your tailnet past Tailscale's 180 days, choose **Disable key expiry** for it under **Machines**.
+4. **Turn on the relay** and **pair the phone**, as below.
+5. **Try it away from home:** turn off the phone's Wi-Fi. The queue stays live over mobile data.
 
 ### Turn on the relay
 

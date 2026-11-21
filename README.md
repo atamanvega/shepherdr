@@ -57,6 +57,7 @@ No accounts, no telemetry, no server. The relay for Shepherdr Remote, off until 
 1. Install and start [Herdr](https://herdr.dev/docs/), which Shepherdr needs (CLI 0.9.3 or later for remote machines and terminals).
 2. Recommended: install the [GitHub CLI](https://cli.github.com) and sign in with `gh auth login`. Shepherdr uses it to confirm pull requests and issues, private ones included, fetch their titles, watch pull requests' CI checks and fill your GitHub inbox; without it, those features are limited or off.
 3. Grab the `.dmg` from the [latest release](../../releases/latest) and drag **Shepherdr.app** to Applications. You need an Apple Silicon Mac with macOS 14 or later. It's signed and notarized by Apple, so it opens like any other download, and it offers new versions as they come out, updating itself in place.
+4. Optional, to follow your queue from your phone: install [Tailscale](https://tailscale.com/download) on the Mac and on your iPhone or Android phone, signed in to the same account, and build Shepherdr Remote from this repository, with Xcode for iPhone or Gradle for Android (see [DEVELOPMENT](docs/DEVELOPMENT.md)). On an Android phone with a work profile, keep Tailscale and the app in the same profile. Then turn on the relay in **Settings → Remote** and pair the phone with its QR code; [the guide](docs/GUIDE.md#set-up-your-phone) has the steps.
 
 Prefer to build it yourself? `open Shepherdr.xcodeproj` and hit **⌘R**. More in [DEVELOPMENT](docs/DEVELOPMENT.md).
 
