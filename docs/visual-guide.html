@@ -370,7 +370,7 @@ herdr machine list --json</code></pre>
 <section id="iphone">
 <div class="es">
 <h2>Shepherdr Remote en el móvil</h2>
-<p>Una app de iPhone y Android para el Shepherdr de tu Mac: la cola, la terminal de cada sesión de todas tus máquinas y el editor de prompts, con dictado. Solo habla con Shepherdr en tu Mac, que ya llega a tus máquinas, así que no hace falta SSH. Aún no está en la App Store ni en Google Play: se compila desde el repositorio, con Xcode para iPhone o con Gradle para Android. Necesita iOS 26 o Android 10, y Tailscale en el móvil y en el Mac.</p>
+<p>Una app de iPhone y Android para el Shepherdr de tu Mac: la cola, la terminal de cada sesión de todas tus máquinas y el editor de prompts, con dictado. Solo habla con Shepherdr en tu Mac, que ya llega a tus máquinas, así que no hace falta SSH. Aún no está en la App Store ni en Google Play: se compila desde el repositorio, con Xcode para iPhone o con Gradle para Android. Necesita iOS 26 o Android 10, y Tailscale en el móvil y en el Mac. En un Android con perfil de trabajo, Tailscale y Shepherdr Remote tienen que estar en el mismo perfil: la VPN de un perfil no lleva el tráfico del otro.</p>
 <ol>
 <li>En <i>Settings → Remote</i>, activa <b>Let Shepherdr Remote connect</b>. Escucha en el puerto 1337; cámbialo en <b>Port</b> si tu red pide otro.</li>
 <li>Si el firewall del Mac bloquea las conexiones entrantes, como en algunos equipos de empresa, activa <b>Through Tailscale Serve</b>: el relay escucha solo en el Mac y Tailscale le reenvía las conexiones de tu tailnet.</li>
@@ -382,7 +382,7 @@ herdr machine list --json</code></pre>
 </div>
 <div class="en">
 <h2>Shepherdr Remote on your phone</h2>
-<p>An iPhone and Android app for your Mac's Shepherdr: the queue, the terminal of every session on all your machines and the prompt composer, with dictation. It talks only to Shepherdr on your Mac, which already reaches your machines, so there's no SSH involved. It's not on the App Store or Google Play yet: build it from the repository, with Xcode for iPhone or Gradle for Android. It needs iOS 26 or Android 10, and Tailscale on the phone and on the Mac.</p>
+<p>An iPhone and Android app for your Mac's Shepherdr: the queue, the terminal of every session on all your machines and the prompt composer, with dictation. It talks only to Shepherdr on your Mac, which already reaches your machines, so there's no SSH involved. It's not on the App Store or Google Play yet: build it from the repository, with Xcode for iPhone or Gradle for Android. It needs iOS 26 or Android 10, and Tailscale on the phone and on the Mac. On an Android phone with a work profile, Tailscale and Shepherdr Remote must be in the same profile: one profile's VPN doesn't carry the other's traffic.</p>
 <ol>
 <li>In <i>Settings → Remote</i>, turn on <b>Let Shepherdr Remote connect</b>. It listens on port 1337; change it in <b>Port</b> if your network asks for another.</li>
 <li>If the Mac's firewall blocks incoming connections, as some company Macs do, turn on <b>Through Tailscale Serve</b>: the relay listens on the Mac only and Tailscale forwards your tailnet's connections to it.</li>
